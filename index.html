@@ -100,6 +100,11 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
 .c0,.r0{background:#c2362c}
 .c1,.r1{background:#b45309}
 .c2,.r2{background:#157a4d}
+.daily{display:grid;gap:2px;width:100%;text-align:left;margin-top:12px;padding:14px 16px;border-radius:18px;border:2px solid var(--orange);background:var(--card);color:var(--ink)}
+.daily .dt{font-size:19px;font-weight:800}
+.daily .ds{font-size:14px;color:var(--mut)}
+.badge{font-size:12px;font-weight:800;color:#fff;background:#b45309;border-radius:99px;padding:2px 9px}
+.notice.news{border-left-color:var(--blue);align-items:flex-start}
 .notice{margin:4px 16px;padding:10px 12px;border-radius:12px;background:var(--soft);border-left:4px solid var(--bad);font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .btn:disabled{opacity:.45;cursor:default}
 .zbox{background:var(--soft);border-left:4px solid var(--blue);padding:10px 12px;border-radius:10px;font-size:15px;margin:10px 0}
@@ -187,6 +192,9 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
 /* Stapel stehen als JSON-Blöcke <script type="application/json" class="lk-deck"> vor diesem Skript. */
 
 /* ===================== Speicher ===================== */
+/* ===================== Version ===================== */
+const APP_VERSION="3.0", APP_DATE="2026-11-24";
+const APP_NEWS=["Tagesrunde: deine fälligen Karten als kurze Runde – danach siehst du, wann die nächste Übung dran ist.","Fehler-Revanche: Was du im Quiz falsch hattest, kommt am nächsten Tag ohne Auswahl wieder.","Quiz verdeckt: Erst frei antworten, dann die Auswahl aufdecken.","Sicherung unter „Mehr“, besserer Schutz deiner Daten und viele kleine Korrekturen."];
 const KEY="lernkiste-v1", DKEY="lernkiste-decks";
 let storeOK=true;const warns=[];
 try{localStorage.setItem("lk-probe","1");localStorage.removeItem("lk-probe")}catch(e){storeOK=false}
@@ -271,6 +279,13 @@ function examInfo(){const e=examDate();if(!e)return"";const a=new Date(e+"T00:00
 function ivl(lv){const m=[1,5,30,240,1440,4320,10080][Math.min(lv,6)];const ex=examTime(),now=Date.now();if(ex>now){return Math.min(m,Math.max(5,(ex-now)/120000))}return m}
 function stats(cards){const n=cards.length,now=Date.now();let sum=0,mast=0,due=0,seen=0;cards.forEach(c=>{const k=ck(c.id);sum+=Math.min(k.lv,4)/4;if(k.lv>=3)mast++;if(k.n>0){seen++;if(k.due<=now)due++}});return{n,mast,due,seen,pct:n?Math.round(sum/n*100):0,mastPct:n?Math.round(mast/n*100):0}}
 const pctTxt=s=>s.seen?s.pct+" %":"–";
+/* Tagesrunde und Fehler-Revanche */
+function nextDay(){const t=new Date();t.setHours(24,0,0,0);return t.getTime()}
+function fmtWhen(ts){const d=new Date(ts),a=new Date(ts),t0=new Date();a.setHours(0,0,0,0);t0.setHours(0,0,0,0);const day=Math.round((a-t0)/864e5),hm=pad(d.getHours())+":"+pad(d.getMinutes());return day<=0?"heute um "+hm:day===1?"morgen um "+hm:"am "+pad(d.getDate())+"."+pad(d.getMonth()+1)+". um "+hm}
+function revCards(){const now=Date.now();return D.cards.filter(c=>{const r=ck(c.id).rev;return c.mc&&r&&r.due<=now})}
+function dueCards(){const now=Date.now();return D.cards.filter(c=>{const k=ck(c.id);return k.n>0&&k.due<=now}).sort((a,b)=>ck(a.id).due-ck(b.id).due)}
+function nextDue(){const now=Date.now();let m=Infinity;D.cards.forEach(c=>{const k=ck(c.id);if(k.n>0&&k.due>now)m=Math.min(m,k.due);if(k.rev&&k.rev.due>now)m=Math.min(m,k.rev.due)});return m===Infinity?0:m}
+function nextDueTxt(){const n=nextDue();return n?"Nächste Übung: "+fmtWhen(n):"Noch keine Wiederholung geplant"}
 function mascot(p){return p<25?"🐣":p<50?"🐥":p<75?"🦊":p<100?"🦉":"🦄"}
 let tT=null;
 function toast(t){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.style.display="block";clearTimeout(tT);tT=setTimeout(()=>{el.style.display="none"},2600)}
@@ -313,6 +328,7 @@ const TRO=[
   {id:"dolph",e:"🐬",n:"Delfin",d:"Die Hälfte sicher gelernt",f:()=>stats(D.cards).mastPct>=50},
   {id:"panda",e:"🐼",n:"Panda",d:"3 Lerntage in Folge",f:()=>streak()>=3},
   {id:"lion",e:"🦁",n:"Löwe",d:"500 Punkte gesammelt",f:()=>S.points>=500},
+  {id:"dragon",e:"🐲",n:"Drache",d:"5 Fehler-Revanchen gewonnen",f:()=>(S.stats.rev||0)>=5},
   {id:"uni",e:"🦄",n:"Einhorn",d:"Alle Karten sicher gelernt",f:()=>stats(D.cards).mastPct>=100}
 ];
 let troQ=[];
@@ -337,7 +353,8 @@ function home(){
   const st=stats(D.cards),ex=examInfo(),f=activeFilter();
   const tagBtns=`<button class="tag${f.length?"":" on"}" aria-pressed="${!f.length}" data-act="tag" data-v="">Alle (${D.cards.length})</button>`+D.topics.map(t=>{const cs2=D.cards.filter(c=>c.t===t.id);return`<button class="tag${f.includes(t.id)?" on":""}" aria-pressed="${f.includes(t.id)}" data-act="tag" data-v="${esc(t.id)}" style="--c:${esc(t.c)}"><i></i>${esc(t.n)} · ${pctTxt(stats(cs2))}</button>`}).join("");
   const mode=(id,title,txt,rec)=>`<button class="mode${rec?" rec":""}" data-act="${id}">${ICON[id]}${rec?"<em>Empfohlen</em>":""}<b>${title}</b><span>${txt}</span></button>`;
-  const dk=allDecks();
+  const dk=allDecks(),rc=revCards().length,dc=dueCards().length,todo=Math.min(rc+dc,20);
+  const daily=`<button class="daily" data-act="daily"><span class="dt">Tagesrunde</span><span class="ds">${todo?`${dc} ${dc===1?"Karte":"Karten"} fällig${rc?` · ${rc} Fehler-Revanche${rc===1?"":"n"}`:""} · ca. ${Math.max(1,Math.round(todo*0.5))} Min`:st.seen?"Heute alles erledigt ✓ · "+nextDueTxt():"Starte mit den Karteikarten – danach findest du hier jeden Tag deine fälligen Karten."}</span></button>`;
   V.innerHTML=`${dk.length>1?`<div class="tags decks">${dk.map(d=>`<button class="tag${d.id===D.id?" on":""}" aria-pressed="${d.id===D.id}" data-act="deck" data-v="${esc(d.id)}">${esc(d.subject||d.title)}</button>`).join("")}</div>`:""}
   <section class="hero">
     <div class="mascot" aria-hidden="true">${mascot(st.pct)}</div>
@@ -346,6 +363,7 @@ function home(){
       <div class="bar" aria-label="Lernfortschritt ${st.pct} Prozent"><i style="width:${st.pct}%"></i></div>
       <div class="hs">${st.seen?`${st.mast} von ${st.n} Karten sicher · ${st.due} fällig`:"Noch keine Einschätzung"}${ex?" · "+ex:""}</div></div>
   </section>
+  ${daily}
   <h2 class="h">Themen</h2>
   <div class="tags">${tagBtns}</div>
   <h2 class="h">Wie willst du lernen?</h2>
@@ -374,10 +392,27 @@ function buildQueue(){
   if(q.length<12)q=q.concat(cards.filter(c=>!q.includes(c)).sort((a,b)=>ck(a.id).lv-ck(b.id).lv||ck(a.id).due-ck(b.id).due));
   return roundRobin(q.slice(0,12)).map(c=>c.id);
 }
-function startLearn(){const q=buildQueue();if(!q.length){toast("Keine Karten in diesen Themen");return}L={q,i:0,flip:false,conf:null,hints:0,typed:"",num:"",showType:false,ok:0,up:0,n:0,pts:0,rq:{},anim:false};markDay();go("learn")}
+function newL(q){return{q,i:0,flip:false,conf:null,hints:0,typed:"",num:"",showType:false,ok:0,up:0,n:0,pts:0,rq:{},anim:false,rev:0,revOk:0,daily:false}}
+function startLearn(){const q=buildQueue();if(!q.length){toast("Keine Karten in diesen Themen");return}L=newL(q);markDay();go("learn")}
+/* Tagesrunde: zuerst Fehler-Revanchen, dann fällige Karten (gemischt), höchstens 20. */
+function startDaily(){const q=revCards().map(c=>"r:"+c.id).concat(roundRobin(dueCards()).map(c=>c.id)).slice(0,20);if(!q.length){toast("Heute ist nichts fällig. "+nextDueTxt());return}L=newL(q);L.daily=true;markDay();go("learn")}
+const sbarL=()=>`<div class="sbar"><button class="x" data-act="home" aria-label="Runde beenden">✕</button><div class="meter grow"><i style="width:${L.i/L.q.length*100}%;background:var(--orange)"></i></div><span class="sub nowrap">${L.i+1} / ${L.q.length}</span></div>`;
+function revView(c){const tp=topic(c.t);let body=`<div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="badge">Fehler-Revanche</span></div>`;
+  if(!L.flip)body+=`<p class="sub" style="margin:10px 0 0">Diese Frage hattest du im Quiz falsch. Jetzt ohne Auswahl:</p><h2 class="q">${fmt(c.mc.q||c.q)}</h2>
+    <label for="typed" class="sub">Deine Antwort (ein Stichwort reicht)</label><textarea id="typed" placeholder="Aus dem Kopf …">${esc(L.typed)}</textarea>
+    <button class="btn mt" data-act="revflip" style="width:100%">Lösung zeigen</button>`;
+  else body+=`<p class="sub" style="margin:10px 0 4px">${fmt(c.mc.q||c.q)}</p>${L.typed.trim()?`<div class="zbox mine"><b>Deine Antwort:</b> ${esc(L.typed)}</div>`:""}<div class="ans">${quizFb(c,null).html}</div>
+    <button class="btn ghost sm" data-act="say">Vorlesen</button><p class="sub mt">Ehrlich: Hattest du es?</p>
+    <div class="row"><button class="btn r0" data-act="revrate" data-v="0" style="flex:1">Wieder nicht</button><button class="btn r2" data-act="revrate" data-v="2" style="flex:1">Jetzt gewusst</button></div>`;
+  V.innerHTML=sbarL()+`<article class="kcard${L.anim?" turn":""}">${body}</article>`;L.anim=false}
+function rateRev(v){const c=byId(L.q[L.i].slice(2)),k=cs(c.id);L.n++;L.rev++;
+  if(v===2){delete k.rev;k.revWon=(k.revWon||0)+1;S.stats.rev=(S.stats.rev||0)+1;S.points+=10;L.pts+=10;L.revOk++}
+  else{k.rev={due:nextDay(),n:((k.rev&&k.rev.n)||0)+1};S.points+=2;L.pts+=2}
+  L.i++;L.flip=false;L.typed="";hush();save();render();checkTro()}
 function lvDots(c){const k=ck(c.id);return`<span class="lv" title="Lernstufe">${[1,2,3,4].map(i=>`<i class="${k.lv>=i?"f":""}"></i>`).join("")}</span>`}
 function learn(){
   if(L.i>=L.q.length)return learnEnd();
+  if(String(L.q[L.i]).startsWith("r:"))return revView(byId(L.q[L.i].slice(2)));
   const c=byId(L.q[L.i]),tp=topic(c.t);
   const top=`<div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span>${lvDots(c)}</div>`;
   let body;
@@ -403,7 +438,7 @@ function learn(){
     <p class="sub mt">Ehrlich: Wie lief's?</p>
     <div class="three"><button class="btn r0" data-act="rate" data-v="0">Nicht gewusst</button><button class="btn r1" data-act="rate" data-v="1">Teilweise</button><button class="btn r2" data-act="rate" data-v="2">Gewusst</button></div>`;
   }
-  V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Runde beenden">✕</button><div class="meter grow"><i style="width:${L.i/L.q.length*100}%;background:var(--orange)"></i></div><span class="sub nowrap">${L.i+1} / ${L.q.length}</span></div><article class="kcard${L.anim?" turn":""}">${body}</article>`;
+  V.innerHTML=sbarL()+`<article class="kcard${L.anim?" turn":""}">${body}</article>`;
   L.anim=false;
 }
 const sayText=c=>plain(c.a)+". "+plain(c.x||"");
@@ -427,9 +462,11 @@ function rateCard(v){
 }
 function learnEnd(){
   const st=stats(D.cards);
-  V.innerHTML=`<div class="big"><div class="e">${mascot(st.pct)}</div><div class="n">Runde geschafft!</div><p class="sub">${L.ok} von ${L.n} Antworten gewusst · ${L.up} ${L.up===1?"Karte":"Karten"} eine Stufe höher · +${L.pts} Punkte</p></div>
+  const cn=L.n-L.rev;
+  V.innerHTML=`<div class="big"><div class="e">${mascot(st.pct)}</div><div class="n">${L.daily?"Tagesrunde geschafft!":"Runde geschafft!"}</div><p class="sub">${cn?`${L.ok} von ${cn} Karten gewusst · ${L.up} ${L.up===1?"Karte":"Karten"} eine Stufe höher · `:""}${L.rev?`Fehler-Revanche: ${L.revOk} von ${L.rev} gewonnen · `:""}+${L.pts} Punkte</p></div>
+  <div class="zbox"><b>${nextDueTxt()}</b></div>
   <div class="kpis"><div class="kpi"><b>${st.pct} %</b><span>gelernt</span></div><div class="kpi"><b>${st.mast}</b><span>Karten sicher</span></div><div class="kpi"><b>${st.due}</b><span>fällig</span></div></div>
-  <div class="row"><button class="btn" data-act="learn" style="flex:1">Noch eine Runde</button><button class="btn ghost" data-act="quiz" style="flex:1">Quiz</button></div>
+  <div class="row">${L.daily?`<button class="btn" data-act="home" style="flex:1">Zur Startseite</button>`:`<button class="btn" data-act="learn" style="flex:1">Noch eine Runde</button>`}<button class="btn ghost" data-act="quiz" style="flex:1">Quiz</button></div>
   <p class="sub mt">Tipp: Lieber zwei kurze Runden mit Pause als eine lange.</p>`;
 }
 
@@ -437,20 +474,22 @@ function startQuiz(test){
   const pool=(test?D.cards:filtered()).filter(c=>c.mc&&c.mc.o&&c.mc.o.length>1);
   const n=Math.min(test?12:10,pool.length);if(!n){toast("Hier gibt es keine Quizfragen");return}
   const pick=roundRobin(shuffle(pool)).slice(0,n);
-  Q={test,items:pick.map(c=>({id:c.id,opts:shuffle(c.mc.o.map((t,i)=>({t,ok:i===0})))})),i:0,ans:null,score:0,by:{}};markDay();go("quiz");
+  Q={test,hide:!test&&S.set.hide!==false,shown:false,free:"",items:pick.map(c=>({id:c.id,opts:shuffle(c.mc.o.map((t,i)=>({t,ok:i===0})))})),i:0,ans:null,score:0,by:{}};markDay();go("quiz");
 }
 function quiz(){
   if(Q.i>=Q.items.length)return quizEnd();
   const it=Q.items[Q.i],c=byId(it.id),tp=topic(c.t),a=Q.ans;
   const opts=it.opts.map((o,i)=>`<button class="opt${a!=null&&o.ok?" ok":""}${a===i&&!o.ok?" no":""}" data-act="pick" data-v="${i}" ${a!=null?"aria-disabled=\"true\"":""}>${fmt(o.t)}</button>`).join("");
-  const right=a!=null&&it.opts[a].ok,fb=quizFb(c,it);
+  const right=a!=null&&it.opts[a].ok,fb=quizFb(c,it),veil=Q.hide&&!Q.shown&&a==null;
   V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Beenden">✕</button><div class="meter grow"><i style="width:${Q.i/Q.items.length*100}%;background:var(--blue)"></i></div><span class="sub nowrap">${Q.i+1} / ${Q.items.length}</span></div>
   <div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="sub">${Q.test?"Lernstand-Test":"Quiz"}</span></div>
-  <h2 class="q">${fmt(c.mc.q||c.q)}</h2>${opts}
-  ${a!=null?`<div class="fb" role="status"><b class="${right?"g":"n"}">${right?"Richtig! +10":"Nicht ganz."}</b><br>${fb.html}</div><div class="row"><button class="btn ghost sm" data-act="say">Vorlesen</button><button class="btn" data-act="qnext" style="flex:1">Weiter</button></div>`:""}`;
+  <h2 class="q">${fmt(c.mc.q||c.q)}</h2>${veil?`<label for="qfree" class="sub">Erst frei antworten – dann die Auswahl aufdecken</label><textarea id="qfree" placeholder="Deine Antwort aus dem Kopf …">${esc(Q.free)}</textarea>
+  <button class="btn mt" data-act="qreveal" style="width:100%">Auswahl zeigen</button><p class="sub mt">Verdecken kannst du unter „Mehr“ ausschalten.</p>`:opts}
+  ${a!=null&&Q.free.trim()?`<div class="zbox mine"><b>Deine freie Antwort:</b> ${esc(Q.free)}</div>`:""}
+  ${a!=null?`<div class="fb" role="status"><b class="${right?"g":"n"}">${right?"Richtig! +10":"Nicht ganz."}</b><br>${fb.html}${right?"":"<br><span class=\"sub\">Diese Frage kommt morgen als Fehler-Revanche wieder – ohne Auswahl.</span>"}</div><div class="row"><button class="btn ghost sm" data-act="say">Vorlesen</button><button class="btn" data-act="qnext" style="flex:1">Weiter</button></div>`:""}`;
 }
 /* Rückmeldung passend zur tatsächlich gestellten Quizfrage (eigene Quizfrage mc.q ≠ Kartenfrage). */
-function quizFb(c,it){const right=it.opts.find(o=>o.ok).t,own=!!c.mc.q;let extra="";
+function quizFb(c,it){const right=it?it.opts.find(o=>o.ok).t:c.mc.o[0],own=!!c.mc.q;let extra="";
   if(c.mc.x)extra=c.mc.x;else if(!own){if(plain(c.a)!==plain(right))extra=c.a;if(c.x)extra+=(extra?" ":"")+c.x}else if(c.x)extra=c.x;
   return{html:`Richtige Antwort: <b>${fmt(right)}</b>${extra?"<br>"+fmt(extra):""}`,text:"Richtige Antwort: "+plain(right)+". "+plain(extra)}}
 /* Wird genau einmal beim Abschluss aufgerufen – nicht beim Anzeigen. */
@@ -522,6 +561,7 @@ function more(){
     <p class="sub mt">Aktuell: <b>${examDate()?deDate(examDate())+(examInfo()?" ("+examInfo()+")":" (vorbei)"):"kein Termin"}</b></p></div>
   <div class="card2"><b>Vorlesen</b><p class="sub">Standard: aus. Wenn an, wird die Lösung beim Umdrehen automatisch vorgelesen. Den Knopf „Vorlesen“ auf der Karte kannst du immer nutzen.</p>
     <div class="row"><button class="btn ${S.set.tts?"":"ghost"} sm" data-act="tts">${S.set.tts?"An":"Aus"}</button>${[[.85,"Langsam"],[1,"Normal"],[1.15,"Schnell"]].map(r=>`<button class="btn sm ${S.set.rate===r[0]?"":"ghost"}" data-act="rate2" data-v="${r[0]}">${r[1]}</button>`).join("")}<button class="btn ghost sm" data-act="saytest">Test</button></div></div>
+  <div class="card2"><b>Quiz verdeckt</b><p class="sub">Erst frei antworten, dann die Auswahl aufdecken. Das trainiert das Erinnern stärker als nur Wiedererkennen. Der Lernstand-Test bleibt immer offen.</p><button class="btn sm ${S.set.hide===false?"ghost":""}" aria-pressed="${S.set.hide!==false}" data-act="hidetog">${S.set.hide===false?"Aus":"An"}</button></div>
   <div class="card2"><b>Lernstapel</b><p class="sub">Neue Stapel bekommst du als .json-Datei (z. B. per AirDrop oder WhatsApp in „Dateien“ sichern).</p>
     ${allDecks().map(d=>`<button class="opt${d.id===D.id?" ok":""}" data-act="deck" data-v="${esc(d.id)}">${esc(d.title)} <span class="sub">· ${d.cards.length} Karten</span></button>`).join("")}
     <label class="btn ghost sm mt" style="display:inline-flex;align-items:center" for="deckfile">Stapel laden …</label><input type="file" id="deckfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px">
@@ -531,7 +571,7 @@ function more(){
     ${pendingRestore?`<div class="zbox why" role="alert"><b>Sicherung vom ${new Date(pendingRestore.date).toLocaleString("de-DE")} wiederherstellen?</b><br>Dein aktueller Fortschritt auf diesem Gerät wird dabei ersetzt.<div class="row mt"><button class="btn sm" data-act="rsok">Ja, wiederherstellen</button><button class="btn ghost sm" data-act="rsno">Abbrechen</button></div></div>`:""}
     <div id="bkout"></div></div>
   <div class="card2"><b>Fortschritt zurücksetzen</b><p class="sub">Löscht Lernstand und Tests für diesen Stapel. Punkte und Trophäen bleiben.</p><button class="btn ghost sm" data-act="reset">${S._rs?"Wirklich löschen? Nochmal tippen":"Zurücksetzen"}</button></div>
-  <p class="sub">Alles bleibt nur auf diesem Gerät gespeichert.${D.source?" Inhalte: "+esc(D.source)+".":""} Zusatzwissen ist auf den Karten gekennzeichnet.</p>`;
+  <p class="sub"><b>Lernkiste Version ${APP_VERSION}</b> (${deDate(APP_DATE)}) · Alles bleibt nur auf diesem Gerät gespeichert.${D.source?" Inhalte: "+esc(D.source)+".":""} Zusatzwissen ist auf den Karten gekennzeichnet.</p>`;
 }
 
 let importErr=[],pendingRestore=null;
@@ -548,7 +588,7 @@ function showBackupText(){const el=$("#bkout");if(el)el.innerHTML=`<textarea rea
 function render(){
   pills();
   document.querySelectorAll("#nav button").forEach(b=>{const on=b.dataset.v===cur||(b.dataset.v==="home"&&["learn","quiz","match","exam"].includes(cur));b.classList.toggle("on",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
-  $("#notice").innerHTML=(storeOK?"":`<div class="notice" role="alert"><b>Speichern klappt gerade nicht.</b> Dein Fortschritt geht beim Schließen der App verloren. Mögliche Ursachen: privates Surfen oder voller Speicher.</div>`)+warns.map((w,i)=>`<div class="notice" role="status">${esc(w)} <button class="btn ghost sm" data-act="dismisswarn" data-v="${i}">OK</button></div>`).join("");
+  $("#notice").innerHTML=(storeOK?"":`<div class="notice" role="alert"><b>Speichern klappt gerade nicht.</b> Dein Fortschritt geht beim Schließen der App verloren. Mögliche Ursachen: privates Surfen oder voller Speicher.</div>`)+(S.seenVersion!==APP_VERSION?`<div class="notice news" role="status"><div><b>Neu in Version ${APP_VERSION}</b><ul class="ul">${APP_NEWS.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div><button class="btn ghost sm" data-act="newsok">OK</button></div>`:"")+warns.map((w,i)=>`<div class="notice" role="status">${esc(w)} <button class="btn ghost sm" data-act="dismisswarn" data-v="${i}">OK</button></div>`).join("");
   ({home,learn,quiz,match,exam,prog,tro,more})[cur]();
 }
 function go(v){cur=v;hush();render();V.scrollTop=0}
@@ -570,6 +610,12 @@ document.addEventListener("click",e=>{
     case"rsno":pendingRestore=null;render();break;
     case"tag":{if(!v)S.filter=[];else{const f=activeFilter();S.filter=f.includes(v)?f.filter(x=>x!==v):f.concat(v)}save();render();break}
     case"learn":startLearn();break;
+    case"daily":startDaily();break;
+    case"revflip":L.flip=true;L.anim=true;render();if(S.set.tts)speak(quizFb(byId(L.q[L.i].slice(2)),null).text);break;
+    case"revrate":rateRev(+v);break;
+    case"qreveal":Q.shown=true;render();break;
+    case"hidetog":S.set.hide=S.set.hide===false;save();render();break;
+    case"newsok":S.seenVersion=APP_VERSION;save();render();break;
     case"quiz":startQuiz(false);break;
     case"test":startQuiz(true);break;
     case"match":startMatch(0);break;
@@ -579,12 +625,12 @@ document.addEventListener("click",e=>{
     case"type":L.showType=!L.showType;render();if(L.showType){const t=$("#typed");if(t)t.focus()}break;
     case"flip":{L.conf=+v;L.flip=true;L.anim=true;render();if(S.set.tts)speak(sayText(byId(L.q[L.i])));break}
     case"rate":rateCard(+v);break;
-    case"say":{if(cur==="learn")speak(sayText(byId(L.q[L.i])));else if(cur==="quiz"&&Q.items[Q.i]){const it=Q.items[Q.i];speak(quizFb(byId(it.id),it).text)}break}
+    case"say":{if(cur==="learn"){const r=String(L.q[L.i]);speak(r.startsWith("r:")?quizFb(byId(r.slice(2)),null).text:sayText(byId(r)))}else if(cur==="quiz"&&Q.items[Q.i]){const it=Q.items[Q.i];speak(quizFb(byId(it.id),it).text)}break}
     case"pick":{if(Q.ans!=null)break;const it=Q.items[Q.i],c=byId(it.id),ok=it.opts[+v].ok,k=cs(c.id);Q.ans=+v;const r=Q.by[c.t]||(Q.by[c.t]=[0,0]);r[1]++;
       /* Quiz wird getrennt erfasst. Ein Fehler plant eine Wiederholung ein, ohne die Karteistufe zu senken. */
-      k.qn=(k.qn||0)+1;if(ok){Q.score++;r[0]++;S.points+=10;k.qok=(k.qok||0)+1}else{k.qbad=(k.qbad||0)+1;if(k.n>0)k.due=Math.min(k.due||Infinity,Date.now())}
+      k.qn=(k.qn||0)+1;if(ok){Q.score++;r[0]++;S.points+=10;k.qok=(k.qok||0)+1}else{k.qbad=(k.qbad||0)+1;if(k.n>0)k.due=Math.min(k.due||Infinity,Date.now());k.rev={due:Math.min((k.rev&&k.rev.due)||Infinity,nextDay()),n:(k.rev&&k.rev.n)||0}}
       save();render();break}
-    case"qnext":Q.i++;Q.ans=null;hush();if(Q.i>=Q.items.length)finishQuiz();render();break;
+    case"qnext":Q.i++;Q.ans=null;Q.shown=false;Q.free="";hush();if(Q.i>=Q.items.length)finishQuiz();render();break;
     case"ml":M.sel=+v;render();break;
     case"mr":{if(M.sel==null){toast("Tippe zuerst links einen Begriff");break}if(+v===M.sel){M.done.push(+v)}else{M.err++;M.bad=+v}M.sel=null;render();break}
     case"exresume":{const dr=P().examDraft;E={i:dr.i,show:!!dr.show,ticks:dr.ticks||[],got:dr.got||0,max:dr.max||0,txt:dr.txt||"",locked:dr.locked||""};render();break}
@@ -601,7 +647,7 @@ document.addEventListener("click",e=>{
     case"reset":if(!S._rs){S._rs=true;render()}else{S._rs=false;delete S.p[D.id];save();toast("Fortschritt zurückgesetzt");render()}break;
   }
 });
-document.addEventListener("input",e=>{if(e.target.id==="typed"&&L)L.typed=e.target.value;if(e.target.id==="etxt"&&E){E.txt=e.target.value;saveDraft(false)}if(e.target.id==="numin"&&L)L.num=e.target.value});
+document.addEventListener("input",e=>{if(e.target.id==="typed"&&L)L.typed=e.target.value;if(e.target.id==="etxt"&&E){E.txt=e.target.value;saveDraft(false)}if(e.target.id==="numin"&&L)L.num=e.target.value;if(e.target.id==="qfree"&&Q)Q.free=e.target.value});
 document.addEventListener("change",e=>{
   if(e.target.id==="exdate"){P().exam=e.target.value||null;if(!P().exam)P().examMode="none";toast(save()?(P().exam?"Datum gespeichert":"Termin gelöscht – du lernst ohne Termin"):"Speichern hat nicht geklappt");render()}
   if(e.target.id==="backupfile"&&e.target.files&&e.target.files[0]){const r=new FileReader();r.onload=()=>{let o=null;try{o=JSON.parse(r.result)}catch(err){}

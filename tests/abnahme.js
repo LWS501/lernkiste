@@ -110,7 +110,8 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     for (let t = 0; t < 40 && !ok; t++) {
       const a = boot({ 'lernkiste-v1': JSON.stringify({ filter: ['imp'] }) });
       a.click('[data-act=quiz]');
-      for (let i = 0; i < 12 && a.q('[data-act=pick]'); i++) {
+      for (let i = 0; i < 12 && (a.q('[data-act=pick]') || a.q('[data-act=qreveal]')); i++) {
+        if (a.q('[data-act=qreveal]')) a.click('[data-act=qreveal]');
         if (/NICHT in deiner Tabelle/.test(a.q('h2.q').textContent)) { a.click('[data-act=pick][data-v="0"]'); txt = a.q('.fb').textContent; ok = true; break; }
         a.click('[data-act=pick][data-v="0"]'); a.click('[data-act=qnext]'); a.closeModals();
       }
@@ -187,6 +188,72 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     b.click('[data-act=nav][data-v=more]');
     await b.file('#backupfile', '{"foo":1}');
     check('Fremde Datei als Sicherung → abgelehnt', /keine Lernkiste-Sicherung/.test(b.q('.toast').textContent));
+  }
+  // 12) Lernidee 1: Quiz verdeckt
+  {
+    const a = boot();
+    a.click('[data-act=quiz]');
+    const veiled = !!a.q('#qfree') && !a.q('[data-act=pick]');
+    a.input('#qfree', 'meine Idee');
+    a.click('[data-act=qreveal]');
+    const opts = a.q('[data-act=pick]');
+    a.click('[data-act=pick][data-v="0"]');
+    check('Quiz verdeckt: erst frei antworten, dann Auswahl; freie Antwort im Feedback', veiled && !!opts && /meine Idee/.test(a.q('#view').textContent));
+    a.click('[data-act=nav][data-v=more]'); a.click('[data-act=hidetog]');
+    a.click('[data-act=nav][data-v=home]'); a.click('[data-act=quiz]');
+    check('Verdecken abschaltbar', !!a.q('[data-act=pick]') && !a.q('#qfree'));
+    const b = boot(); b.click('[data-act=test]');
+    check('Lernstand-Test immer offen (nicht verdeckt)', !!b.q('[data-act=pick]'));
+  }
+  // 13) Lernidee 3: Fehler-Revanche – Quizfehler am Folgetag ohne Auswahl
+  {
+    const a = boot();
+    a.click('[data-act=nav][data-v=more]'); a.click('[data-act=hidetog]');
+    a.click('[data-act=nav][data-v=home]'); a.click('[data-act=quiz]');
+    let wrongId = null;
+    for (let i = 0; i < 10 && a.q('[data-act=pick]'); i++) {
+      const id = a.d.querySelector('h2.q').textContent; const btns = [...a.d.querySelectorAll('[data-act=pick]')];
+      const deckCard = JSON.parse(a.d.querySelector('script.lk-deck').textContent).cards.find(c => c.mc && (c.mc.q || c.q) === id);
+      const wrong = btns.find(b => b.textContent !== deckCard.mc.o[0]);
+      a.click(wrong); if (!wrongId) wrongId = deckCard.id; a.click('[data-act=qnext]'); a.closeModals(); break;
+    }
+    const k = a.state().p[DECK].c[wrongId];
+    const tomorrow = new Date(); tomorrow.setHours(24, 0, 0, 0);
+    check('Quizfehler plant Revanche für morgen', k.rev && k.rev.due === tomorrow.getTime() && (k.lv || 0) === 0);
+    a.click('[data-act=nav][data-v=home]');
+    check('Heute noch keine Revanche fällig', !/Fehler-Revanche/.test(a.q('.daily').textContent));
+    // „Morgen“: Fälligkeit in die Vergangenheit legen und neu starten
+    const st = a.state(); st.p[DECK].c[wrongId].rev.due = Date.now() - 1000;
+    const b = boot({ 'lernkiste-v1': JSON.stringify(st) });
+    check('Startseite zeigt Revanche', /1 Fehler-Revanche/.test(b.q('.daily').textContent));
+    b.click('[data-act=daily]');
+    const noChoices = !!b.q('[data-act=revflip]') && !b.q('[data-act=pick]') && /Fehler-Revanche/.test(b.q('.badge').textContent);
+    b.click('[data-act=revflip]');
+    const shows = /Richtige Antwort:/.test(b.q('.ans').textContent);
+    b.click('[data-act=revrate][data-v="2"]'); b.closeModals();
+    check('Revanche ohne Auswahl, Lösung, „Jetzt gewusst“ löscht sie', noChoices && shows && !b.state().p[DECK].c[wrongId].rev);
+  }
+  // 14) Lernidee 2: Tagesrunde mit nächstem Übungszeitpunkt
+  {
+    const now = Date.now();
+    const st = { seenVersion: '3.0', deck: DECK, p: { [DECK]: { examMode: 'none', c: { i1: { lv: 1, n: 1, due: now - 60e3, ok: 1, bad: 0, over: 0 }, k1: { lv: 2, n: 2, due: now - 60e3, ok: 2, bad: 0, over: 0 }, c1: { lv: 2, n: 2, due: now + 5 * 3600e3, ok: 2, bad: 0, over: 0 } }, tests: [] } } };
+    const a = boot({ 'lernkiste-v1': JSON.stringify(st) });
+    const label = a.q('.daily').textContent;
+    a.click('[data-act=daily]');
+    let n = 0; for (let i = 0; i < 10 && a.q('[data-act=flip]'); i++) { a.click('[data-act=flip][data-v="2"]'); a.click('[data-act=rate][data-v="2"]'); a.closeModals(); n++; }
+    const end = a.q('#view').textContent;
+    check('Tagesrunde: nur fällige Karten (2), Ende mit nächstem Übungszeitpunkt', /2 Karten fällig/.test(label) && n === 2 && /Tagesrunde geschafft/.test(end) && /Nächste Übung: (heute|morgen) um \d\d:\d\d/.test(end), label + ' | n=' + n);
+    a.click('[data-act=home]');
+    check('Danach: „Heute alles erledigt“', /Heute alles erledigt/.test(a.q('.daily').textContent));
+  }
+  // 15) Versionierung
+  {
+    const a = boot();
+    check('Hinweis „Neu in Version 3.0“ einmalig', /Neu in Version 3\.0/.test(a.q('#notice').textContent));
+    a.click('[data-act=newsok]');
+    check('Nach OK verschwunden', !/Neu in Version/.test(a.q('#notice').textContent) && a.state().seenVersion === '3.0');
+    a.click('[data-act=nav][data-v=more]');
+    check('Version unter „Mehr“ sichtbar', /Lernkiste Version 3\.0/.test(a.q('#view').textContent));
   }
   // Ausgabe
   const w = Math.max(...results.map(r => r.name.length));

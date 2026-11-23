@@ -28,7 +28,7 @@ try {
     }
     report.push(`${name}: Lernrunde ${n} Karten → ${q('.n') ? q('.n').textContent : 'kein Ende?'}`);
     home(); click('[data-act=quiz]');
-    for (let i = 0; i < 12 && q('[data-act=pick]'); i++) { click('[data-act=pick][data-v="0"]'); click('[data-act=qnext]'); closeModal(); }
+    for (let i = 0; i < 12 && (q('[data-act=pick]') || q('[data-act=qreveal]')); i++) { if (q('[data-act=qreveal]')) click('[data-act=qreveal]'); click('[data-act=pick][data-v="0"]'); click('[data-act=qnext]'); closeModal(); }
     report.push(`${name}: Quiz → ${q('.n') ? q('.n').textContent : '?'}`);
     home(); click('[data-act=match]');
     if (q('.mcol')) {
@@ -38,6 +38,10 @@ try {
     }
     home();
     if (q('[data-act=exam]')) { click('[data-act=exam]'); for (let j = 0; j < 12 && q('[data-act=eshow]'); j++) { click('[data-act=eshow]'); click('[data-act=tick][data-v="0"]'); click('[data-act=enext]'); closeModal(); } report.push(`${name}: Probeklausur → ${q('.big .n') ? q('.big .n').textContent : '?'}`); }
+    // Tagesrunde (enthält Fehler-Revanchen, sobald fällig)
+    home(); if (q('[data-act=daily]')) { click('[data-act=daily]'); let m = 0;
+      for (let i = 0; i < 40 && (q('[data-act=flip]') || q('[data-act=revflip]')); i++) { if (q('[data-act=revflip]')) { click('[data-act=revflip]'); click(`[data-act=revrate][data-v="${i % 2 ? 2 : 0}"]`); } else { click('[data-act=flip][data-v="2"]'); click('[data-act=rate][data-v="2"]'); } closeModal(); m++; }
+      report.push(`${name}: Tagesrunde ${m} Karten → ${q('.n') ? q('.n').textContent : 'nichts fällig'}`); }
     home(); click('[data-act=test]'); for (let i = 0; i < 14 && q('[data-act=pick]'); i++) { click('[data-act=pick][data-v="1"]'); click('[data-act=qnext]'); closeModal(); }
   }
   click('[data-act=nav][data-v=prog]'); click('[data-act=nav][data-v=tro]'); click('[data-act=nav][data-v=more]');
