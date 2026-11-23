@@ -1,6 +1,6 @@
 # Änderungsprotokoll Lernkiste
 
-Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html` und als Git-Tag `vX.Y`. Live ist immer `index.html`.
+Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html`. Live ist immer `index.html`.
 
 ## 3.0 – 24.11.2026
 - **Tagesrunde:** fällige Karten und Fehler-Revanchen als kurze Runde, danach Anzeige der nächsten Übung

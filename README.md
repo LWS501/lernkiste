@@ -14,4 +14,4 @@ Lernkarten-App als **eine** statische `index.html` (immer die aktuelle Version; 
 
 Tests: `npm i jsdom@24`, dann `node tools/lk_smoke.js index.html` und `node tests/abnahme.js index.html`.
 
-Zurückrollen: gewünschte Datei aus `versions/` als `index.html` hochladen (oder `git checkout vX.Y -- index.html`).
+Zurückrollen: gewünschte Datei aus `versions/` als `index.html` hochladen.
