@@ -4,6 +4,7 @@ const fs = require('fs');
 const { JSDOM } = require(process.env.JSDOM_PATH || 'jsdom');
 const HTML = fs.readFileSync(process.argv[2] || 'index.html', 'utf8');
 const DECK = 'gesch-9-2026-11';
+const VER = (HTML.match(/APP_VERSION="([^"]+)"/) || [])[1];
 const results = [];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -236,7 +237,7 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
   // 14) Lernidee 2: Tagesrunde mit nächstem Übungszeitpunkt
   {
     const now = Date.now();
-    const st = { seenVersion: '3.0', deck: DECK, p: { [DECK]: { examMode: 'none', c: { i1: { lv: 1, n: 1, due: now - 60e3, ok: 1, bad: 0, over: 0 }, k1: { lv: 2, n: 2, due: now - 60e3, ok: 2, bad: 0, over: 0 }, c1: { lv: 2, n: 2, due: now + 5 * 3600e3, ok: 2, bad: 0, over: 0 } }, tests: [] } } };
+    const st = { seenVersion: VER, deck: DECK, p: { [DECK]: { examMode: 'none', c: { i1: { lv: 1, n: 1, due: now - 60e3, ok: 1, bad: 0, over: 0 }, k1: { lv: 2, n: 2, due: now - 60e3, ok: 2, bad: 0, over: 0 }, c1: { lv: 2, n: 2, due: now + 5 * 3600e3, ok: 2, bad: 0, over: 0 } }, tests: [] } } };
     const a = boot({ 'lernkiste-v1': JSON.stringify(st) });
     const label = a.q('.daily').textContent;
     a.click('[data-act=daily]');
@@ -249,11 +250,11 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
   // 15) Versionierung
   {
     const a = boot();
-    check('Hinweis „Neu in Version 3.0“ einmalig', /Neu in Version 3\.0/.test(a.q('#notice').textContent));
+    check(`Hinweis „Neu in Version ${VER}“ einmalig`, a.q('#notice').textContent.includes('Neu in Version ' + VER));
     a.click('[data-act=newsok]');
-    check('Nach OK verschwunden', !/Neu in Version/.test(a.q('#notice').textContent) && a.state().seenVersion === '3.0');
+    check('Nach OK verschwunden', !/Neu in Version/.test(a.q('#notice').textContent) && a.state().seenVersion === VER);
     a.click('[data-act=nav][data-v=more]');
-    check('Version unter „Mehr“ sichtbar', /Lernkiste Version 3\.0/.test(a.q('#view').textContent));
+    check('Version unter „Mehr“ sichtbar', a.q('#view').textContent.includes('Lernkiste Version ' + VER));
   }
   // Ausgabe
   const w = Math.max(...results.map(r => r.name.length));
