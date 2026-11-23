@@ -97,9 +97,11 @@ textarea,input[type=date],select{width:100%;font:16px Nunito,sans-serif;border:1
 textarea{min-height:86px;margin-top:10px;resize:vertical}
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .three .btn{padding:8px 4px;font-size:15px}
-.c0,.r0{background:var(--bad)}
-.c1,.r1{background:var(--orange)}
-.c2,.r2{background:var(--ok)}
+.c0,.r0{background:#c2362c}
+.c1,.r1{background:#b45309}
+.c2,.r2{background:#157a4d}
+.notice{margin:4px 16px;padding:10px 12px;border-radius:12px;background:var(--soft);border-left:4px solid var(--bad);font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn:disabled{opacity:.45;cursor:default}
 .zbox{background:var(--soft);border-left:4px solid var(--blue);padding:10px 12px;border-radius:10px;font-size:15px;margin:10px 0}
 .zbox.why{border-left-color:var(--orange)}
 .zbox.mine{border-left-color:var(--mut)}
@@ -165,7 +167,8 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
     <div class="brand">Lern<b>kiste</b></div>
     <div class="pills" id="pills"></div>
   </header>
-  <main id="view"></main>
+  <div id="notice"></div>
+  <main id="view" tabindex="-1"></main>
   <nav id="nav">
     <button data-act="nav" data-v="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Lernen</button>
     <button data-act="nav" data-v="prog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Fortschritt</button>
@@ -185,13 +188,57 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
 
 /* ===================== Speicher ===================== */
 const KEY="lernkiste-v1", DKEY="lernkiste-decks";
-const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const DECKS=[...document.querySelectorAll("script.lk-deck")].map(el=>{try{return JSON.parse(el.textContent)}catch(e){return null}}).filter(d=>d&&d.id&&Array.isArray(d.cards)&&d.cards.length);
-const S=Object.assign({points:0,days:[],tro:{},p:{},set:{tts:false,rate:1},deck:null,filter:[],stats:{ok:0,calib:0}},store.get(KEY)||{});
-S.stats=Object.assign({ok:0,calib:0},S.stats); S.set=Object.assign({tts:false,rate:1},S.set);
-if(S.set.v!==2){S.set.tts=false;S.set.v=2}
-let decks=store.get(DKEY)||[];
-const allDecks=()=>[...DECKS,...decks.filter(d=>!DECKS.some(b=>b.id===d.id))];
+let storeOK=true;const warns=[];
+try{localStorage.setItem("lk-probe","1");localStorage.removeItem("lk-probe")}catch(e){storeOK=false}
+const store={
+  raw(k){try{return localStorage.getItem(k)}catch(e){storeOK=false;return null}},
+  get(k){const r=this.raw(k);if(r==null)return null;try{return JSON.parse(r)}catch(e){try{localStorage.setItem(k+"-defekt-"+Date.now(),r)}catch(e2){}warns.push("Gespeicherte Daten waren beschädigt und konnten nicht gelesen werden. Eine Kopie wurde aufgehoben.");return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));storeOK=true;return true}catch(e){storeOK=false;return false}}
+};
+/* Prüft einen Stapel vollständig. Rückgabe: Liste verständlicher Fehler (leer = gültig). */
+function deckErrors(d){
+  const E=[],str=x=>typeof x==="string"&&x.trim()!=="";
+  if(!d||typeof d!=="object"||Array.isArray(d))return["Die Datei enthält keinen Lernstapel."];
+  if(!str(d.id)||!/^[a-z0-9-]{3,60}$/.test(d.id))E.push("Stapel-id fehlt oder ist ungültig.");
+  if(!str(d.title))E.push("Titel fehlt.");
+  if(d.examDate!=null&&d.examDate!==""&&!/^\d{4}-\d{2}-\d{2}$/.test(d.examDate))E.push("Datum der Arbeit hat ein falsches Format.");
+  const T=Array.isArray(d.topics)?d.topics:[],tids=T.map(t=>t&&t.id);
+  if(!T.length)E.push("Themen fehlen.");
+  if(new Set(tids).size!==tids.length)E.push("Themen-ids sind doppelt.");
+  T.forEach((t,i)=>{if(!t||!str(t.id)||!str(t.n))E.push(`Thema ${i+1}: id oder Name fehlt.`);else if(t.c!=null&&!/^#[0-9a-fA-F]{6}$/.test(t.c))E.push(`Thema „${t.n}“: Farbe ungültig.`)});
+  const G=d.graphics==null?{}:d.graphics;
+  if(typeof G!=="object"||Array.isArray(G))E.push("Grafiken haben ein falsches Format.");
+  else Object.keys(G).forEach(k=>{const g=G[k],it=g&&g.items,pair=g&&(g.k==="timeline"||g.k==="list");
+    if(!g||!["wheel","pyramid","steps","timeline","list"].includes(g.k)||!Array.isArray(it)||!it.length)E.push(`Grafik „${k}“ ist ungültig.`);
+    else if(pair&&!it.every(x=>Array.isArray(x)&&x.length===2&&x.every(y=>typeof y==="string")))E.push(`Grafik „${k}“: Einträge müssen Paare sein.`);
+    else if(!pair&&!it.every(x=>typeof x==="string"))E.push(`Grafik „${k}“: Einträge müssen Texte sein.`)});
+  const C=Array.isArray(d.cards)?d.cards:[],ids=new Set();
+  if(!C.length)E.push("Der Stapel enthält keine Karten.");
+  C.forEach((c,i)=>{const n="Karte "+(c&&str(c.id)?c.id:i+1);
+    if(!c||typeof c!=="object"){E.push(n+": ungültig.");return}
+    if(!str(c.id))E.push(n+": id fehlt.");else if(ids.has(c.id))E.push(n+": id doppelt.");else ids.add(c.id);
+    if(!tids.includes(c.t))E.push(n+": Thema unbekannt.");
+    if(!str(c.q)||!str(c.a))E.push(n+": Frage oder Antwort fehlt.");
+    ["x","z","w"].forEach(k=>{if(c[k]!=null&&typeof c[k]!=="string")E.push(`${n}: ${k} muss Text sein.`)});
+    ["h","s"].forEach(k=>{if(c[k]!=null&&!(Array.isArray(c[k])&&c[k].every(x=>typeof x==="string")))E.push(`${n}: ${k} muss eine Liste von Texten sein.`)});
+    if(c.mc!=null){const o=c.mc&&c.mc.o;if(!Array.isArray(o)||o.length<2||!o.every(str)||new Set(o).size!==o.length)E.push(n+": Quiz braucht mindestens 2 verschiedene Antworten.");else if((c.mc.q!=null&&typeof c.mc.q!=="string")||(c.mc.x!=null&&typeof c.mc.x!=="string"))E.push(n+": Quiztext ungültig.")}
+    if(c.num!=null){if(typeof c.num!=="object"||typeof c.num.v!=="number"||!isFinite(c.num.v))E.push(n+": Rechenwert ungültig.");else if(c.num.tol!=null&&!(typeof c.num.tol==="number"&&c.num.tol>=0&&c.num.tol<1))E.push(n+": Toleranz ungültig.")}
+    if(c.g!=null){const g=typeof G==="object"&&G?G[c.g]:null;if(!g)E.push(`${n}: Grafik „${c.g}“ fehlt.`);else if(c.hl!=null&&!(Number.isInteger(c.hl)&&c.hl>=0&&Array.isArray(g.items)&&c.hl<g.items.length))E.push(n+": Markierung außerhalb der Grafik.")}
+  });
+  if(d.match!=null){if(!Array.isArray(d.match))E.push("Zuordnen hat ein falsches Format.");else d.match.forEach((m,i)=>{const p=m&&m.p;if(!m||!str(m.n)||!Array.isArray(p)||p.length<2||!p.every(x=>Array.isArray(x)&&x.length===2&&x.every(str)))E.push(`Zuordnen ${i+1}: ungültig.`);else if(new Set(p.map(x=>x[0])).size!==p.length||new Set(p.map(x=>x[1])).size!==p.length)E.push(`Zuordnen „${m.n}“: Paare nicht eindeutig.`)})}
+  if(d.exam!=null){if(!Array.isArray(d.exam))E.push("Probeklausur hat ein falsches Format.");else d.exam.forEach((x,i)=>{if(!x||!tids.includes(x.t)||!str(x.q)||!Array.isArray(x.p)||!x.p.length||!x.p.every(str))E.push(`Probeklausur-Aufgabe ${i+1}: ungültig.`)})}
+  return E;
+}
+function normDeck(d){d.graphics=d.graphics||{};d.match=d.match||[];d.exam=d.exam||[];d.topics.forEach(t=>{if(!t.c)t.c="#2f4fd1"});return d}
+const DECKS=[...document.querySelectorAll("script.lk-deck")].map(el=>{try{return JSON.parse(el.textContent)}catch(e){return null}}).filter(d=>!deckErrors(d).length).map(normDeck);
+const S0=()=>({points:0,days:[],tro:{},p:{},set:{tts:false,rate:1},deck:null,filter:[],stats:{ok:0,calib:0}});
+const S=Object.assign(S0(),store.get(KEY)||{});
+function fixState(){S.stats=Object.assign({ok:0,calib:0},S.stats);S.set=Object.assign({tts:false,rate:1},S.set);if(S.set.v!==2){S.set.tts=false;S.set.v=2}if(!S.p||typeof S.p!=="object")S.p={};if(!Array.isArray(S.days))S.days=[];if(!S.tro||typeof S.tro!=="object")S.tro={}}
+fixState();
+let decks=[],decksBad=[];
+function loadDecks(list){decks=[];decksBad=[];(Array.isArray(list)?list:[]).forEach(d=>{if(!deckErrors(d).length&&!DECKS.some(b=>b.id===d.id))decks.push(normDeck(d));else decksBad.push(d)});if(decksBad.length)warns.push(decksBad.length===1?"Ein eigener Stapel war beschädigt oder doppelt und wurde ausgeblendet.":decksBad.length+" eigene Stapel waren beschädigt oder doppelt und wurden ausgeblendet.")}
+loadDecks(store.get(DKEY));
+const allDecks=()=>[...DECKS,...decks];
 function pickDefault(){const t=new Date(),now=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");const up=allDecks().filter(d=>d.examDate&&d.examDate>=now).sort((a,b)=>a.examDate<b.examDate?-1:1);return up[0]||allDecks()[allDecks().length-1]}
 let D=allDecks().find(d=>d.id===S.deck)||pickDefault();
 if(!D){document.getElementById("view").innerHTML='<p style="padding:20px">Kein Lernstapel gefunden.</p>';throw new Error("no deck")}
@@ -216,11 +263,14 @@ function activeFilter(){return (S.filter||[]).filter(id=>D.topics.some(t=>t.id==
 function filtered(){const f=activeFilter();return f.length?D.cards.filter(c=>f.includes(c.t)):D.cards}
 function markDay(){const t=today();if(!S.days.includes(t)){S.days.push(t);save()}}
 function streak(){const set=new Set(S.days);const d=new Date();if(!set.has(dayStr(d)))d.setDate(d.getDate()-1);let n=0;while(set.has(dayStr(d))){n++;d.setDate(d.getDate()-1)}return n}
-function examDate(){return P().exam||D.examDate||""}
+function examMode(){const p=P();return p.examMode||(p.exam?"own":"deck")}
+function examDate(){const m=examMode();return m==="none"?"":m==="own"?(P().exam||""):(D.examDate||"")}
+const deDate=s=>s?s.split("-").reverse().join("."):"";
 function examTime(){const e=examDate();return e?new Date(e+"T08:00").getTime():0}
 function examInfo(){const e=examDate();if(!e)return"";const a=new Date(e+"T00:00"),b=new Date(today()+"T00:00");const d=Math.round((a-b)/864e5);if(d<0)return"";return d===0?"Arbeit heute":d===1?"Arbeit morgen":"Arbeit in "+d+" Tagen"}
 function ivl(lv){const m=[1,5,30,240,1440,4320,10080][Math.min(lv,6)];const ex=examTime(),now=Date.now();if(ex>now){return Math.min(m,Math.max(5,(ex-now)/120000))}return m}
-function stats(cards){const n=cards.length,now=Date.now();let sum=0,mast=0,due=0;cards.forEach(c=>{const k=ck(c.id);sum+=Math.min(k.lv,4)/4;if(k.lv>=3)mast++;if(k.n>0&&k.due<=now)due++});return{n,mast,due,pct:n?Math.round(sum/n*100):0,mastPct:n?Math.round(mast/n*100):0}}
+function stats(cards){const n=cards.length,now=Date.now();let sum=0,mast=0,due=0,seen=0;cards.forEach(c=>{const k=ck(c.id);sum+=Math.min(k.lv,4)/4;if(k.lv>=3)mast++;if(k.n>0){seen++;if(k.due<=now)due++}});return{n,mast,due,seen,pct:n?Math.round(sum/n*100):0,mastPct:n?Math.round(mast/n*100):0}}
+const pctTxt=s=>s.seen?s.pct+" %":"–";
 function mascot(p){return p<25?"🐣":p<50?"🐥":p<75?"🦊":p<100?"🦉":"🦄"}
 let tT=null;
 function toast(t){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.style.display="block";clearTimeout(tT);tT=setTimeout(()=>{el.style.display="none"},2600)}
@@ -258,7 +308,7 @@ const TRO=[
   {id:"bee",e:"🐝",n:"Biene",d:"Zuordnen ohne Fehler",f:()=>!!S.stats.mp},
   {id:"koala",e:"🐨",n:"Koala",d:"10-mal dich richtig eingeschätzt",f:()=>S.stats.calib>=10},
   {id:"octo",e:"🐙",n:"Krake",d:"Alle Themen geübt",f:()=>D.topics.every(t=>D.cards.some(c=>c.t===t.id&&ck(c.id).n>0))},
-  {id:"peng",e:"🐧",n:"Pinguin",d:"Probeklausur geschafft",f:()=>!!S.stats.ex},
+  {id:"peng",e:"🐧",n:"Pinguin",d:"Probeklausur mit mindestens 50 % bestanden",f:()=>!!S.stats.exPass},
   {id:"fly",e:"🦋",n:"Schmetterling",d:"Lernstand-Test mit 80 % oder mehr",f:()=>!!S.stats.t80},
   {id:"dolph",e:"🐬",n:"Delfin",d:"Die Hälfte sicher gelernt",f:()=>stats(D.cards).mastPct>=50},
   {id:"panda",e:"🐼",n:"Panda",d:"3 Lerntage in Folge",f:()=>streak()>=3},
@@ -267,7 +317,10 @@ const TRO=[
 ];
 let troQ=[];
 function checkTro(){TRO.forEach(t=>{if(!S.tro[t.id]&&t.f()){S.tro[t.id]=today();troQ.push(t)}});save();showTro()}
-function showTro(){if($(".modal")||!troQ.length)return;const t=troQ.shift();const m=document.createElement("div");m.className="modal";m.innerHTML=`<div role="dialog" aria-label="Neue Trophäe"><div class="e">${t.e}</div><div class="h">Neue Trophäe: ${esc(t.n)}</div><p class="sub">${esc(t.d)}</p><button class="btn" data-act="closemodal" style="width:100%">Juhu!</button></div>`;document.body.appendChild(m)}
+let lastFocus=null;
+function showTro(){if($(".modal")||!troQ.length)return;const t=troQ.shift();if(!lastFocus)lastFocus=document.activeElement;const m=document.createElement("div");m.className="modal";m.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="troT" aria-describedby="troD"><div class="e" aria-hidden="true">${t.e}</div><div class="h" id="troT">Neue Trophäe: ${esc(t.n)}</div><p class="sub" id="troD">${esc(t.d)}</p><button class="btn" data-act="closemodal" style="width:100%">Juhu!</button></div>`;document.body.appendChild(m);$("#app").setAttribute("aria-hidden","true");const b=m.querySelector("button");if(b)b.focus()}
+function closeTro(){const m=$(".modal");if(m)m.remove();$("#app").removeAttribute("aria-hidden");if(troQ.length)return showTro();const f=lastFocus;lastFocus=null;if(f&&document.contains(f)&&f!==document.body)f.focus();else focusView()}
+function focusView(){const h=V.querySelector("h2")||V;if(!h.hasAttribute("tabindex"))h.setAttribute("tabindex","-1");h.focus()}
 
 /* ===================== Ansichten ===================== */
 let cur="home",L=null,Q=null,M=null,E=null,report="";
@@ -282,16 +335,16 @@ function pills(){$("#pills").innerHTML=`<span class="pill" title="Lerntage in Fo
 
 function home(){
   const st=stats(D.cards),ex=examInfo(),f=activeFilter();
-  const tagBtns=`<button class="tag${f.length?"":" on"}" data-act="tag" data-v="">Alle (${D.cards.length})</button>`+D.topics.map(t=>{const cs2=D.cards.filter(c=>c.t===t.id);return`<button class="tag${f.includes(t.id)?" on":""}" data-act="tag" data-v="${esc(t.id)}" style="--c:${esc(t.c)}"><i></i>${esc(t.n)} · ${stats(cs2).pct} %</button>`}).join("");
+  const tagBtns=`<button class="tag${f.length?"":" on"}" aria-pressed="${!f.length}" data-act="tag" data-v="">Alle (${D.cards.length})</button>`+D.topics.map(t=>{const cs2=D.cards.filter(c=>c.t===t.id);return`<button class="tag${f.includes(t.id)?" on":""}" aria-pressed="${f.includes(t.id)}" data-act="tag" data-v="${esc(t.id)}" style="--c:${esc(t.c)}"><i></i>${esc(t.n)} · ${pctTxt(stats(cs2))}</button>`}).join("");
   const mode=(id,title,txt,rec)=>`<button class="mode${rec?" rec":""}" data-act="${id}">${ICON[id]}${rec?"<em>Empfohlen</em>":""}<b>${title}</b><span>${txt}</span></button>`;
   const dk=allDecks();
-  V.innerHTML=`${dk.length>1?`<div class="tags decks">${dk.map(d=>`<button class="tag${d.id===D.id?" on":""}" data-act="deck" data-v="${esc(d.id)}">${esc(d.subject||d.title)}</button>`).join("")}</div>`:""}
+  V.innerHTML=`${dk.length>1?`<div class="tags decks">${dk.map(d=>`<button class="tag${d.id===D.id?" on":""}" aria-pressed="${d.id===D.id}" data-act="deck" data-v="${esc(d.id)}">${esc(d.subject||d.title)}</button>`).join("")}</div>`:""}
   <section class="hero">
     <div class="mascot" aria-hidden="true">${mascot(st.pct)}</div>
     <div><div class="hk">${esc(D.title)}</div>
-      <div class="hb">${st.pct} % gelernt</div>
+      <div class="hb">${st.seen?st.pct+" % gelernt":"Los geht’s!"}</div>
       <div class="bar" aria-label="Lernfortschritt ${st.pct} Prozent"><i style="width:${st.pct}%"></i></div>
-      <div class="hs">${st.mast} von ${st.n} Karten sicher · ${st.due} fällig${ex?" · "+ex:""}</div></div>
+      <div class="hs">${st.seen?`${st.mast} von ${st.n} Karten sicher · ${st.due} fällig`:"Noch keine Einschätzung"}${ex?" · "+ex:""}</div></div>
   </section>
   <h2 class="h">Themen</h2>
   <div class="tags">${tagBtns}</div>
@@ -321,7 +374,7 @@ function buildQueue(){
   if(q.length<12)q=q.concat(cards.filter(c=>!q.includes(c)).sort((a,b)=>ck(a.id).lv-ck(b.id).lv||ck(a.id).due-ck(b.id).due));
   return roundRobin(q.slice(0,12)).map(c=>c.id);
 }
-function startLearn(){const q=buildQueue();if(!q.length){toast("Keine Karten in diesen Themen");return}L={q,i:0,flip:false,conf:null,hints:0,typed:"",num:"",showType:false,ok:0,n:0,pts:0,rq:{},anim:false};markDay();go("learn")}
+function startLearn(){const q=buildQueue();if(!q.length){toast("Keine Karten in diesen Themen");return}L={q,i:0,flip:false,conf:null,hints:0,typed:"",num:"",showType:false,ok:0,up:0,n:0,pts:0,rq:{},anim:false};markDay();go("learn")}
 function lvDots(c){const k=ck(c.id);return`<span class="lv" title="Lernstufe">${[1,2,3,4].map(i=>`<i class="${k.lv>=i?"f":""}"></i>`).join("")}</span>`}
 function learn(){
   if(L.i>=L.q.length)return learnEnd();
@@ -346,6 +399,7 @@ function learn(){
     ${c.z?`<div class="zbox"><b>Zusatzwissen</b> <span class="sub">(nicht aus deiner Mitschrift)</span><br>${fmt(c.z)}</div>`:""}
     ${c.w?`<div class="zbox why"><b>Denk weiter:</b> ${fmt(c.w)}</div>`:""}
     <button class="btn ghost sm" data-act="say">Vorlesen</button>
+    ${practiceReason(c)?`<p class="sub mt">Übung (${practiceReason(c)}): „Gewusst“ bringt Punkte, aber noch keine neue Stufe. Die Stufe steigt beim nächsten fälligen Abruf ohne Hilfe.</p>`:""}
     <p class="sub mt">Ehrlich: Wie lief's?</p>
     <div class="three"><button class="btn r0" data-act="rate" data-v="0">Nicht gewusst</button><button class="btn r1" data-act="rate" data-v="1">Teilweise</button><button class="btn r2" data-act="rate" data-v="2">Gewusst</button></div>`;
   }
@@ -354,21 +408,26 @@ function learn(){
 }
 const sayText=c=>plain(c.a)+". "+plain(c.x||"");
 function numCheck(c){if(!c.num||!String(L.num).trim())return"";const x=parseFloat(String(L.num).replace(/\s/g,"").replace(",","."));const v=+c.num.v,tol=c.num.tol!=null?+c.num.tol:0.02;const ok=isFinite(x)&&(v===0?Math.abs(x)<=1e-9+tol:Math.abs(x-v)<=Math.abs(v)*tol);return`<div class="zbox ${ok?"okb":"nob"}"><b>Dein Ergebnis: ${esc(L.num)} ${fmt(c.num.u||"")}</b> – ${ok?"richtig!":"leider nicht ganz. Richtig: "+esc(String(v).replace(".",","))+" "+fmt(c.num.u||"")}</div>`}
+/* Zählt diese Antwort für den Stufenaufstieg? Nur selbstständig (ohne Hinweis), nicht als Wiederholung in derselben Runde
+   und bei bekannten Karten erst ab dem fälligen Termin. Alles andere ist Übung. */
+function practiceReason(c){const k=ck(c.id);if(L.hints>0)return"mit Hinweis";if((L.rq[c.id]||0)>0)return"Wiederholung in dieser Runde";if(k.n>0&&k.due>Date.now())return"vor dem fälligen Termin";return""}
 function rateCard(v){
-  const c=byId(L.q[L.i]),k=cs(c.id),now=Date.now();k.n++;
+  const c=byId(L.q[L.i]),why=practiceReason(c),k=cs(c.id),now=Date.now();k.n++;k.last=now;
   let pts=v===2?10:v===1?5:2;pts=Math.max(1,pts-2*L.hints);
-  if(v===2){k.lv=Math.min(k.lv+1,6);k.ok++;S.stats.ok++;L.ok++;k.over=0}
-  else if(v===1){k.lv=Math.max(1,k.lv)}
-  else{k.lv=0;k.bad++;if(L.conf===2)k.over=1}
+  if(v===2){k.ok++;S.stats.ok++;L.ok++;k.over=0;
+    if(!why){k.lv=Math.min(k.lv+1,6);L.up++;k.due=now+ivl(k.lv)*60000}
+    else if(why!=="vor dem fälligen Termin"){k.due=now+ivl(why==="mit Hinweis"?0:Math.max(1,k.lv))*60000}
+  }
+  else if(v===1){k.due=Math.min(k.due||Infinity,now+ivl(Math.max(0,k.lv-1))*60000)}
+  else{k.lv=0;k.bad++;if(L.conf===2)k.over=1;k.due=now+60000}
   if((L.conf===2&&v===2)||(L.conf===0&&v===0))S.stats.calib++;
-  k.due=now+(v===0?1:ivl(v===1?Math.max(1,k.lv-1):k.lv))*60000;
   S.points+=pts;L.pts+=pts;L.n++;
   if(v<2&&(L.rq[c.id]||0)<2){L.rq[c.id]=(L.rq[c.id]||0)+1;L.q.splice(Math.min(L.i+1+(v===0?3:5),L.q.length),0,c.id)}
   L.i++;L.flip=false;L.conf=null;L.hints=0;L.typed="";L.num="";L.showType=false;hush();save();render();checkTro();
 }
 function learnEnd(){
   const st=stats(D.cards);
-  V.innerHTML=`<div class="big"><div class="e">${mascot(st.pct)}</div><div class="n">Runde geschafft!</div><p class="sub">${L.ok} von ${L.n} Antworten gewusst · +${L.pts} Punkte</p></div>
+  V.innerHTML=`<div class="big"><div class="e">${mascot(st.pct)}</div><div class="n">Runde geschafft!</div><p class="sub">${L.ok} von ${L.n} Antworten gewusst · ${L.up} ${L.up===1?"Karte":"Karten"} eine Stufe höher · +${L.pts} Punkte</p></div>
   <div class="kpis"><div class="kpi"><b>${st.pct} %</b><span>gelernt</span></div><div class="kpi"><b>${st.mast}</b><span>Karten sicher</span></div><div class="kpi"><b>${st.due}</b><span>fällig</span></div></div>
   <div class="row"><button class="btn" data-act="learn" style="flex:1">Noch eine Runde</button><button class="btn ghost" data-act="quiz" style="flex:1">Quiz</button></div>
   <p class="sub mt">Tipp: Lieber zwei kurze Runden mit Pause als eine lange.</p>`;
@@ -384,16 +443,22 @@ function quiz(){
   if(Q.i>=Q.items.length)return quizEnd();
   const it=Q.items[Q.i],c=byId(it.id),tp=topic(c.t),a=Q.ans;
   const opts=it.opts.map((o,i)=>`<button class="opt${a!=null&&o.ok?" ok":""}${a===i&&!o.ok?" no":""}" data-act="pick" data-v="${i}" ${a!=null?"aria-disabled=\"true\"":""}>${fmt(o.t)}</button>`).join("");
-  const right=a!=null&&it.opts[a].ok;
+  const right=a!=null&&it.opts[a].ok,fb=quizFb(c,it);
   V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Beenden">✕</button><div class="meter grow"><i style="width:${Q.i/Q.items.length*100}%;background:var(--blue)"></i></div><span class="sub nowrap">${Q.i+1} / ${Q.items.length}</span></div>
   <div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="sub">${Q.test?"Lernstand-Test":"Quiz"}</span></div>
   <h2 class="q">${fmt(c.mc.q||c.q)}</h2>${opts}
-  ${a!=null?`<div class="fb"><b class="${right?"g":"n"}">${right?"Richtig! +10":"Nicht ganz."}</b><br>${fmt(c.a)}${c.x?"<br>"+fmt(c.x):""}</div><div class="row"><button class="btn ghost sm" data-act="say">Vorlesen</button><button class="btn" data-act="qnext" style="flex:1">Weiter</button></div>`:""}`;
+  ${a!=null?`<div class="fb" role="status"><b class="${right?"g":"n"}">${right?"Richtig! +10":"Nicht ganz."}</b><br>${fb.html}</div><div class="row"><button class="btn ghost sm" data-act="say">Vorlesen</button><button class="btn" data-act="qnext" style="flex:1">Weiter</button></div>`:""}`;
 }
+/* Rückmeldung passend zur tatsächlich gestellten Quizfrage (eigene Quizfrage mc.q ≠ Kartenfrage). */
+function quizFb(c,it){const right=it.opts.find(o=>o.ok).t,own=!!c.mc.q;let extra="";
+  if(c.mc.x)extra=c.mc.x;else if(!own){if(plain(c.a)!==plain(right))extra=c.a;if(c.x)extra+=(extra?" ":"")+c.x}else if(c.x)extra=c.x;
+  return{html:`Richtige Antwort: <b>${fmt(right)}</b>${extra?"<br>"+fmt(extra):""}`,text:"Richtige Antwort: "+plain(right)+". "+plain(extra)}}
+/* Wird genau einmal beim Abschluss aufgerufen – nicht beim Anzeigen. */
+function finishQuiz(){if(Q.saved)return;Q.saved=true;const n=Q.items.length,p=Math.round(Q.score/n*100);
+  if(Q.test){P().tests.push({d:Date.now(),s:Q.score,n,by:Q.by});if(p>=80)S.stats.t80=1}else if(Q.score===n&&n>=5)S.stats.qp=1;
+  save();checkTro()}
 function quizEnd(){
   const n=Q.items.length,p=Math.round(Q.score/n*100);
-  if(Q.test){P().tests.push({d:Date.now(),s:Q.score,n,by:Q.by});if(p>=80)S.stats.t80=1}else if(Q.score===n&&n>=5)S.stats.qp=1;
-  save();checkTro();
   V.innerHTML=`<div class="big"><div class="e">${p>=80?"🦉":p>=50?"🦊":"🐣"}</div><div class="n">${Q.score} von ${n} richtig</div><p class="sub">${p} % · ${p>=80?"Stark!":p>=50?"Gut – die Fehler kommen in den Karteikarten wieder.":"Übe die Karteikarten – dann klappt's."}</p></div>
   ${Q.test?`<div class="card2"><b>Nach Themen</b>${Object.keys(Q.by).map(t=>{const r=Q.by[t];return`<div class="mrow"><div class="lbl">${esc(topic(t).n)}</div><div class="meter"><i style="width:${r[0]/r[1]*100}%;background:${esc(topic(t).c)}"></i></div><span class="pc">${r[0]}/${r[1]}</span></div>`}).join("")}</div>`:""}
   <div class="row"><button class="btn" data-act="learn" style="flex:1">Karteikarten</button><button class="btn ghost" data-act="${Q.test?"test":"quiz"}" style="flex:1">Nochmal</button></div>`;
@@ -412,25 +477,32 @@ function match(){
   M.bad=null;
 }
 
-function startExam(){const ex=D.exam||[];if(!ex.length){toast("Für diesen Stapel gibt es keine Probeklausur");return}E={i:0,show:false,ticks:[],got:0,max:0,txt:""};markDay();go("exam")}
+const PASS=50;
+/* Entwurf der Probeklausur lokal sichern, damit nach dem Neuladen „Fortsetzen“ möglich ist. */
+let draftT=null;
+function saveDraft(now){clearTimeout(draftT);const w=()=>{if(E&&E.i<D.exam.length){P().examDraft={i:E.i,show:E.show,ticks:E.ticks,got:E.got,max:E.max,txt:E.txt,locked:E.locked,ts:Date.now()}}else delete P().examDraft;save()};if(now)w();else draftT=setTimeout(w,400)}
+function startExam(fresh){const ex=D.exam||[];if(!ex.length){toast("Für diesen Stapel gibt es keine Probeklausur");return}
+  const dr=P().examDraft;if(!fresh&&dr&&dr.i<ex.length){E=null;markDay();go("exam");return}
+  delete P().examDraft;E={i:0,show:false,ticks:[],got:0,max:0,txt:"",locked:""};markDay();go("exam")}
 function exam(){
   const ex=D.exam;
-  if(E.i>=ex.length){const p=E.max?Math.round(E.got/E.max*100):0;
-    V.innerHTML=`<div class="big"><div class="e">🐧</div><div class="n">${E.got} von ${E.max} Punkten</div><p class="sub">${p} % des Erwartungshorizonts erfüllt</p></div><div class="row"><button class="btn" data-act="learn" style="flex:1">Karteikarten</button><button class="btn ghost" data-act="exam" style="flex:1">Nochmal</button></div>`;return}
+  if(!E){const dr=P().examDraft;V.innerHTML=`<h2 class="h">Probeklausur</h2><div class="card2"><b>Angefangene Probeklausur</b><p class="sub">Aufgabe ${dr.i+1} von ${ex.length} · gespeichert am ${new Date(dr.ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</p><div class="row"><button class="btn" data-act="exresume" style="flex:1">Fortsetzen</button><button class="btn ghost" data-act="exnew" style="flex:1">Neu beginnen</button></div></div>`;return}
+  if(E.i>=ex.length){const p=E.max?Math.round(E.got/E.max*100):0,ok=p>=PASS;
+    V.innerHTML=`<div class="big"><div class="e">${ok?"🐧":"🐣"}</div><div class="n">${E.got} von ${E.max} Punkten</div><p class="sub">Abgeschlossen · ${p} % des Erwartungshorizonts · bestanden ab ${PASS} %</p><p><b>${ok?"Bestanden!":"Noch nicht bestanden – übe die Themen mit den Karteikarten und versuche es nochmal."}</b></p></div><div class="row"><button class="btn" data-act="learn" style="flex:1">Karteikarten</button><button class="btn ghost" data-act="exnew" style="flex:1">Nochmal</button></div>`;return}
   const it=ex[E.i],tp=topic(it.t);
   V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Beenden">✕</button><div class="meter grow"><i style="width:${E.i/ex.length*100}%;background:#0e9aa7"></i></div><span class="sub nowrap">Aufgabe ${E.i+1} / ${ex.length}</span></div>
   <span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><h2 class="q">${fmt(it.q)}</h2>
-  <textarea id="etxt" placeholder="Schreib deine Antwort wie in der Arbeit – Stichpunkte sind okay.">${esc(E.txt)}</textarea>
-  ${E.show?`<p class="sub mt"><b>Erwartungshorizont</b> – hake ab, was in deiner Antwort vorkommt:</p>${it.p.map((p,i)=>`<button class="ck${E.ticks.includes(i)?" on":""}" data-act="tick" data-v="${i}"><span class="b">${E.ticks.includes(i)?"✓":""}</span><span>${fmt(p)}</span></button>`).join("")}<button class="btn mt" data-act="enext" style="width:100%">Weiter (${E.ticks.length}/${it.p.length})</button>`:`<button class="btn mt" data-act="eshow" style="width:100%">Erwartungshorizont zeigen</button>`}`;
+  ${E.show?`<p class="sub mt"><b>Deine Antwort</b> (festgehalten, bevor du den Erwartungshorizont gesehen hast):</p><div class="zbox mine">${E.locked.trim()?esc(E.locked).replace(/\n/g,"<br>"):"<i>keine Antwort aufgeschrieben</i>"}</div>`:`<label for="etxt" class="sub">Deine Antwort</label><textarea id="etxt" placeholder="Schreib deine Antwort wie in der Arbeit – Stichpunkte sind okay.">${esc(E.txt)}</textarea><p class="sub">Wird automatisch gespeichert.</p>`}
+  ${E.show?`<p class="sub mt"><b>Erwartungshorizont</b> – hake ab, was in deiner Antwort vorkommt:</p>${it.p.map((p,i)=>`<button class="ck${E.ticks.includes(i)?" on":""}" role="checkbox" aria-checked="${E.ticks.includes(i)}" data-act="tick" data-v="${i}"><span class="b" aria-hidden="true">${E.ticks.includes(i)?"✓":""}</span><span>${fmt(p)}</span></button>`).join("")}<button class="btn mt" data-act="enext" style="width:100%">Weiter (${E.ticks.length}/${it.p.length})</button>`:`<button class="btn mt" data-act="eshow" style="width:100%">Erwartungshorizont zeigen</button>`}`;
 }
 
 function prog(){
   const st=stats(D.cards),now=Date.now();
   const over=D.cards.filter(c=>ck(c.id).over),weak=D.cards.filter(c=>{const k=ck(c.id);return k.n>0&&k.lv<2}),tests=P().tests.slice(-6).reverse();
-  report=[`Lernstand ${D.title} – ${new Date().toLocaleDateString("de-DE")}`,`Gelernt: ${st.pct} % · sicher: ${st.mast}/${st.n} Karten`,`Lerntage in Folge: ${streak()} · Punkte: ${S.points}`,...D.topics.map(t=>`- ${t.n}: ${stats(D.cards.filter(c=>c.t===t.id)).pct} %`),weak.length?`Noch unsicher: ${weak.map(c=>c.q).join(" | ")}`:"Keine unsicheren Karten",tests.length?`Letzter Test: ${tests[0].s}/${tests[0].n}`:"Noch kein Lernstand-Test"].join("\n");
+  report=[`Lernstand ${D.title} – ${new Date().toLocaleDateString("de-DE")}`,st.seen?`Gelernt: ${st.pct} % · sicher: ${st.mast}/${st.n} Karten`:"Noch keine Einschätzung (keine Karteikarte geübt)",`Lerntage in Folge: ${streak()} · Punkte: ${S.points}`,...D.topics.map(t=>{const s=stats(D.cards.filter(c=>c.t===t.id));return`- ${t.n}: ${s.seen?s.pct+" %":"noch keine Einschätzung"}`}),weak.length?`Noch unsicher: ${weak.map(c=>c.q).join(" | ")}`:"Keine unsicheren Karten",tests.length?`Letzter Test: ${tests[0].s}/${tests[0].n}`:"Noch kein Lernstand-Test"].join("\n");
   V.innerHTML=`<h2 class="h">Dein Fortschritt</h2>
-  <div class="kpis"><div class="kpi"><b>${st.pct} %</b><span>gelernt</span></div><div class="kpi"><b>${streak()}</b><span>Lerntage in Folge</span></div><div class="kpi"><b>${S.points}</b><span>Punkte</span></div></div>
-  <div class="card2"><b>Nach Themen</b>${D.topics.map(t=>{const s=stats(D.cards.filter(c=>c.t===t.id));return`<div class="mrow"><div class="lbl"><span class="chip" style="--c:${esc(t.c)}"><i></i></span>${esc(t.n)}</div><div class="meter"><i style="width:${s.pct}%;background:${esc(t.c)}"></i></div><span class="pc">${s.pct} %</span></div>`}).join("")}</div>
+  <div class="kpis"><div class="kpi"><b>${pctTxt(st)}</b><span>${st.seen?"gelernt":"noch keine Einschätzung"}</span></div><div class="kpi"><b>${streak()}</b><span>Lerntage in Folge</span></div><div class="kpi"><b>${S.points}</b><span>Punkte</span></div></div>
+  <div class="card2"><b>Nach Themen</b>${D.topics.map(t=>{const s=stats(D.cards.filter(c=>c.t===t.id));return`<div class="mrow"><div class="lbl"><span class="chip" style="--c:${esc(t.c)}"><i></i></span>${esc(t.n)}</div>${s.seen?`<div class="meter"><i style="width:${s.pct}%;background:${esc(t.c)}"></i></div><span class="pc">${s.pct} %</span>`:`<span class="sub" style="grid-column:1/-1">Noch keine Einschätzung</span>`}</div>`}).join("")}</div>
   <div class="card2"><b>Überschätzt</b> <span class="sub">– „sicher“ gesagt, aber nicht gewusst</span>${over.length?`<ul class="ul">${over.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine – deine Selbsteinschätzung passt.</p>`}</div>
   <div class="card2"><b>Noch unsicher</b>${weak.length?`<ul class="ul">${weak.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine. Stark!</p>`}</div>
   <div class="card2"><b>Lernstand-Tests</b>${tests.length?tests.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:var(--blue)"></i></div><span class="pc">${t.s}/${t.n}</span></div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="test">Test starten</button></div>
@@ -444,19 +516,39 @@ function tro(){
 }
 function more(){
   V.innerHTML=`<h2 class="h">Einstellungen</h2>
-  <div class="card2"><label for="exdate"><b>Datum der Arbeit</b></label><p class="sub">Bis dahin werden die Wiederholungen dichter geplant.</p><input type="date" id="exdate" value="${esc(examDate())}"></div>
+  <div class="card2"><b>Datum der Arbeit</b><p class="sub">Bis dahin werden die Wiederholungen dichter geplant. Ohne Termin gelten normale Abstände.</p>
+    <div class="row" role="group" aria-label="Termin">${[["deck",D.examDate?"Aus dem Stapel ("+deDate(D.examDate)+")":"Aus dem Stapel (keins)"],["own","Eigenes Datum"],["none","Ohne Termin"]].map(o=>`<button class="btn sm ${examMode()===o[0]?"":"ghost"}" aria-pressed="${examMode()===o[0]}" data-act="exmode" data-v="${o[0]}" ${o[0]==="deck"&&!D.examDate?"disabled":""}>${o[1]}</button>`).join("")}</div>
+    ${examMode()==="own"?`<label for="exdate" class="sub" style="display:block;margin-top:10px">Eigenes Datum</label><input type="date" id="exdate" value="${esc(P().exam||"")}">`:""}
+    <p class="sub mt">Aktuell: <b>${examDate()?deDate(examDate())+(examInfo()?" ("+examInfo()+")":" (vorbei)"):"kein Termin"}</b></p></div>
   <div class="card2"><b>Vorlesen</b><p class="sub">Standard: aus. Wenn an, wird die Lösung beim Umdrehen automatisch vorgelesen. Den Knopf „Vorlesen“ auf der Karte kannst du immer nutzen.</p>
     <div class="row"><button class="btn ${S.set.tts?"":"ghost"} sm" data-act="tts">${S.set.tts?"An":"Aus"}</button>${[[.85,"Langsam"],[1,"Normal"],[1.15,"Schnell"]].map(r=>`<button class="btn sm ${S.set.rate===r[0]?"":"ghost"}" data-act="rate2" data-v="${r[0]}">${r[1]}</button>`).join("")}<button class="btn ghost sm" data-act="saytest">Test</button></div></div>
   <div class="card2"><b>Lernstapel</b><p class="sub">Neue Stapel bekommst du als .json-Datei (z. B. per AirDrop oder WhatsApp in „Dateien“ sichern).</p>
     ${allDecks().map(d=>`<button class="opt${d.id===D.id?" ok":""}" data-act="deck" data-v="${esc(d.id)}">${esc(d.title)} <span class="sub">· ${d.cards.length} Karten</span></button>`).join("")}
-    <label class="btn ghost sm mt" style="display:inline-flex;align-items:center" for="deckfile">Stapel laden …</label><input type="file" id="deckfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></div>
+    <label class="btn ghost sm mt" style="display:inline-flex;align-items:center" for="deckfile">Stapel laden …</label><input type="file" id="deckfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px">
+    ${importErr.length?`<div class="zbox nob" role="alert"><b>Stapel nicht übernommen.</b> Dein bisheriger Stapel bleibt aktiv.<ul class="ul">${importErr.slice(0,5).map(e=>`<li>${esc(e)}</li>`).join("")}${importErr.length>5?`<li>… und ${importErr.length-5} weitere</li>`:""}</ul></div>`:""}</div>
+  <div class="card2"><b>Sicherung</b><p class="sub">Sichert Lernfortschritt, Punkte, Trophäen und eigene Stapel – z. B. vor einem Handywechsel.</p>
+    <div class="row"><button class="btn ghost sm" data-act="bkfile">Als Datei sichern</button><button class="btn ghost sm" data-act="bkcopy">Sicherung kopieren</button><label class="btn ghost sm" style="display:inline-flex;align-items:center" for="backupfile">Wiederherstellen …</label><input type="file" id="backupfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></div>
+    ${pendingRestore?`<div class="zbox why" role="alert"><b>Sicherung vom ${new Date(pendingRestore.date).toLocaleString("de-DE")} wiederherstellen?</b><br>Dein aktueller Fortschritt auf diesem Gerät wird dabei ersetzt.<div class="row mt"><button class="btn sm" data-act="rsok">Ja, wiederherstellen</button><button class="btn ghost sm" data-act="rsno">Abbrechen</button></div></div>`:""}
+    <div id="bkout"></div></div>
   <div class="card2"><b>Fortschritt zurücksetzen</b><p class="sub">Löscht Lernstand und Tests für diesen Stapel. Punkte und Trophäen bleiben.</p><button class="btn ghost sm" data-act="reset">${S._rs?"Wirklich löschen? Nochmal tippen":"Zurücksetzen"}</button></div>
   <p class="sub">Alles bleibt nur auf diesem Gerät gespeichert.${D.source?" Inhalte: "+esc(D.source)+".":""} Zusatzwissen ist auf den Karten gekennzeichnet.</p>`;
 }
 
+let importErr=[],pendingRestore=null;
+/* Import: erst vollständig prüfen, dann speichern, erst danach aktivieren. Bei Fehlern bleibt der bisherige Stapel aktiv. */
+function importDeck(txt){let o;importErr=[];
+  try{o=JSON.parse(txt)}catch(err){importErr=["Die Datei ist keine gültige Lernkiste-Datei (kein JSON)."];toast("Stapel nicht übernommen");render();return}
+  const err=deckErrors(o);if(o&&DECKS.some(b=>b.id===o.id))err.unshift("Diese Stapel-id ist schon fest eingebaut. Bitte eine andere id verwenden.");
+  if(err.length){importErr=err;toast("Stapel nicht übernommen");render();return}
+  normDeck(o);const next=decks.filter(d=>d.id!==o.id).concat(o);
+  if(!store.set(DKEY,next.concat(decksBad))){importErr=["Speichern hat nicht geklappt – Stapel nicht übernommen."];render();return}
+  decks=next;D=o;S.deck=o.id;save();toast("Stapel geladen: "+o.title);render()}
+function backup(){return{app:"lernkiste",v:1,date:new Date().toISOString(),state:S,decks:decks.concat(decksBad)}}
+function showBackupText(){const el=$("#bkout");if(el)el.innerHTML=`<textarea readonly style="min-height:120px">${esc(JSON.stringify(backup()))}</textarea><p class="sub">Text markieren, kopieren und z. B. in Notizen sichern.</p>`}
 function render(){
   pills();
-  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===cur||(b.dataset.v==="home"&&["learn","quiz","match","exam"].includes(cur))));
+  document.querySelectorAll("#nav button").forEach(b=>{const on=b.dataset.v===cur||(b.dataset.v==="home"&&["learn","quiz","match","exam"].includes(cur));b.classList.toggle("on",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  $("#notice").innerHTML=(storeOK?"":`<div class="notice" role="alert"><b>Speichern klappt gerade nicht.</b> Dein Fortschritt geht beim Schließen der App verloren. Mögliche Ursachen: privates Surfen oder voller Speicher.</div>`)+warns.map((w,i)=>`<div class="notice" role="status">${esc(w)} <button class="btn ghost sm" data-act="dismisswarn" data-v="${i}">OK</button></div>`).join("");
   ({home,learn,quiz,match,exam,prog,tro,more})[cur]();
 }
 function go(v){cur=v;hush();render();V.scrollTop=0}
@@ -468,28 +560,39 @@ document.addEventListener("click",e=>{
   switch(a){
     case"nav":S._rs=false;go(v);break;
     case"home":go("home");break;
-    case"closemodal":{const m=$(".modal");if(m)m.remove();showTro();break}
+    case"closemodal":closeTro();break;
+    case"dismisswarn":warns.splice(+v,1);render();break;
+    case"exmode":{P().examMode=v;if(v==="own"&&!P().exam)P().exam=null;toast(save()?"Termin gespeichert":"Speichern hat nicht geklappt");render();break}
+    case"bkfile":{try{const blob=new Blob([JSON.stringify(backup(),null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lernkiste-sicherung-"+today()+".json";document.body.appendChild(a);a.click();a.remove();toast("Sicherung erstellt – in „Dateien“ speichern")}catch(err){showBackupText()}break}
+    case"bkcopy":{const t=JSON.stringify(backup());try{navigator.clipboard.writeText(t).then(()=>toast("Sicherung kopiert – z. B. in Notizen einfügen"),showBackupText)}catch(err){showBackupText()}break}
+    case"rsok":{const r=pendingRestore;pendingRestore=null;if(!r)break;const okS=store.set(KEY,r.state),okD=okS&&store.set(DKEY,r.decks);if(!okS||!okD){toast("Speichern hat nicht geklappt – nichts geändert");render();break}
+      Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,S0(),r.state);fixState();loadDecks(r.decks);D=allDecks().find(d=>d.id===S.deck)||pickDefault();toast("Sicherung wiederhergestellt");go("home");break}
+    case"rsno":pendingRestore=null;render();break;
     case"tag":{if(!v)S.filter=[];else{const f=activeFilter();S.filter=f.includes(v)?f.filter(x=>x!==v):f.concat(v)}save();render();break}
     case"learn":startLearn();break;
     case"quiz":startQuiz(false);break;
     case"test":startQuiz(true);break;
     case"match":startMatch(0);break;
     case"mset":startMatch(+v);break;
-    case"exam":startExam();break;
+    case"exam":startExam(false);break;
     case"hint":L.hints++;render();break;
     case"type":L.showType=!L.showType;render();if(L.showType){const t=$("#typed");if(t)t.focus()}break;
     case"flip":{L.conf=+v;L.flip=true;L.anim=true;render();if(S.set.tts)speak(sayText(byId(L.q[L.i])));break}
     case"rate":rateCard(+v);break;
-    case"say":{const id=cur==="learn"?L.q[L.i]:Q.items[Q.i].id;speak(sayText(byId(id)));break}
+    case"say":{if(cur==="learn")speak(sayText(byId(L.q[L.i])));else if(cur==="quiz"&&Q.items[Q.i]){const it=Q.items[Q.i];speak(quizFb(byId(it.id),it).text)}break}
     case"pick":{if(Q.ans!=null)break;const it=Q.items[Q.i],c=byId(it.id),ok=it.opts[+v].ok,k=cs(c.id);Q.ans=+v;const r=Q.by[c.t]||(Q.by[c.t]=[0,0]);r[1]++;
-      if(ok){Q.score++;r[0]++;S.points+=10;k.lv=Math.max(k.lv,1);if(!k.n)k.due=Date.now()+ivl(1)*60000}else{k.lv=0;k.due=Date.now()}
-      k.n++;save();render();break}
-    case"qnext":Q.i++;Q.ans=null;hush();render();break;
+      /* Quiz wird getrennt erfasst. Ein Fehler plant eine Wiederholung ein, ohne die Karteistufe zu senken. */
+      k.qn=(k.qn||0)+1;if(ok){Q.score++;r[0]++;S.points+=10;k.qok=(k.qok||0)+1}else{k.qbad=(k.qbad||0)+1;if(k.n>0)k.due=Math.min(k.due||Infinity,Date.now())}
+      save();render();break}
+    case"qnext":Q.i++;Q.ans=null;hush();if(Q.i>=Q.items.length)finishQuiz();render();break;
     case"ml":M.sel=+v;render();break;
     case"mr":{if(M.sel==null){toast("Tippe zuerst links einen Begriff");break}if(+v===M.sel){M.done.push(+v)}else{M.err++;M.bad=+v}M.sel=null;render();break}
-    case"eshow":E.show=true;render();break;
-    case"tick":{const i=+v;E.ticks=E.ticks.includes(i)?E.ticks.filter(x=>x!==i):E.ticks.concat(i);render();break}
-    case"enext":{const it=D.exam[E.i];E.got+=E.ticks.length;E.max+=it.p.length;S.points+=E.ticks.length*5;E.i++;E.show=false;E.ticks=[];E.txt="";if(E.i>=D.exam.length)S.stats.ex=1;save();render();V.scrollTop=0;checkTro();break}
+    case"exresume":{const dr=P().examDraft;E={i:dr.i,show:!!dr.show,ticks:dr.ticks||[],got:dr.got||0,max:dr.max||0,txt:dr.txt||"",locked:dr.locked||""};render();break}
+    case"exnew":startExam(true);break;
+    case"eshow":E.show=true;E.locked=E.txt;saveDraft(true);render();break;
+    case"tick":{const i=+v;E.ticks=E.ticks.includes(i)?E.ticks.filter(x=>x!==i):E.ticks.concat(i);saveDraft(true);render();break}
+    case"enext":{const it=D.exam[E.i];E.got+=E.ticks.length;E.max+=it.p.length;S.points+=E.ticks.length*5;E.i++;E.show=false;E.ticks=[];E.txt="";E.locked="";
+      if(E.i>=D.exam.length){S.stats.ex=1;if(E.max&&E.got/E.max*100>=PASS)S.stats.exPass=1}saveDraft(true);render();V.scrollTop=0;checkTro();break}
     case"copy":{const done=()=>toast("Kopiert – jetzt z. B. in WhatsApp einfügen");const fall=()=>{$("#rep").innerHTML=`<textarea readonly style="min-height:160px">${esc(report)}</textarea><p class="sub">Text markieren und kopieren.</p>`};try{navigator.clipboard.writeText(report).then(done,fall)}catch(err){fall()}break}
     case"tts":S.set.tts=!S.set.tts;save();render();break;
     case"rate2":S.set.rate=+v;save();render();break;
@@ -498,22 +601,21 @@ document.addEventListener("click",e=>{
     case"reset":if(!S._rs){S._rs=true;render()}else{S._rs=false;delete S.p[D.id];save();toast("Fortschritt zurückgesetzt");render()}break;
   }
 });
-document.addEventListener("input",e=>{if(e.target.id==="typed"&&L)L.typed=e.target.value;if(e.target.id==="etxt"&&E)E.txt=e.target.value;if(e.target.id==="numin"&&L)L.num=e.target.value});
+document.addEventListener("input",e=>{if(e.target.id==="typed"&&L)L.typed=e.target.value;if(e.target.id==="etxt"&&E){E.txt=e.target.value;saveDraft(false)}if(e.target.id==="numin"&&L)L.num=e.target.value});
 document.addEventListener("change",e=>{
-  if(e.target.id==="exdate"){P().exam=e.target.value||null;save();toast("Datum gespeichert")}
+  if(e.target.id==="exdate"){P().exam=e.target.value||null;if(!P().exam)P().examMode="none";toast(save()?(P().exam?"Datum gespeichert":"Termin gelöscht – du lernst ohne Termin"):"Speichern hat nicht geklappt");render()}
+  if(e.target.id==="backupfile"&&e.target.files&&e.target.files[0]){const r=new FileReader();r.onload=()=>{let o=null;try{o=JSON.parse(r.result)}catch(err){}
+    if(!o||o.app!=="lernkiste"||!o.state||typeof o.state!=="object"||typeof o.state.p!=="object"){toast("Das ist keine Lernkiste-Sicherung");return}
+    pendingRestore={date:o.date||Date.now(),state:o.state,decks:Array.isArray(o.decks)?o.decks:[]};render()};r.readAsText(e.target.files[0]);e.target.value=""}
   if(e.target.id==="deckfile"&&e.target.files&&e.target.files[0]){
     const r=new FileReader();
-    r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.cards)||!o.cards.length)throw new Error("leer");
-      o.id=String(o.id||("deck-"+Date.now()));o.title=String(o.title||"Neuer Stapel");
-      if(!Array.isArray(o.topics)||!o.topics.length)o.topics=[{id:"all",n:"Alle",c:"#2f4fd1"}];
-      o.cards=o.cards.filter(c=>c&&c.q&&c.a).map((c,i)=>Object.assign({},c,{id:String(c.id||("c"+i)),t:c.t||o.topics[0].id}));
-      o.graphics=o.graphics||{};o.match=o.match||[];o.exam=o.exam||[];
-      decks=decks.filter(d=>d.id!==o.id).concat(o);store.set(DKEY,decks);D=o;S.deck=o.id;save();toast("Stapel geladen: "+o.title);render()
-    }catch(err){toast("Die Datei passt nicht – bitte eine Lernkiste-.json wählen")}};
-    r.readAsText(e.target.files[0]);
+    r.onload=()=>importDeck(r.result);r.onerror=()=>{importErr=["Die Datei konnte nicht gelesen werden."];render()};
+    r.readAsText(e.target.files[0]);e.target.value="";
   }
 });
 try{window.speechSynthesis&&window.speechSynthesis.getVoices()}catch(e){}
+/* Offline-Start: Service Worker nur bei echtem Webhosting (z. B. GitHub Pages). */
+try{if("serviceWorker" in navigator&&location.protocol==="https:"&&/github\.io$/.test(location.hostname))navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}
 render();checkTro();
 }
 </script>
