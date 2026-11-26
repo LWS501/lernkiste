@@ -15,3 +15,18 @@ Lernkarten-App als **eine** statische `index.html` (immer die aktuelle Version; 
 Tests: `npm i jsdom@24`, dann `node tools/lk_smoke.js index.html` und `node tests/abnahme.js index.html`.
 
 Zurückrollen: gewünschte Datei aus `versions/` als `index.html` hochladen.
+
+## Prüfungsart „Vokabeltest“ (ab 4.0)
+
+Ein Stapel mit `"kind": "vocab"` wird getippt und automatisch geprüft. Felder je Karte:
+
+| Feld | Bedeutung |
+|---|---|
+| `ok` | Liste der verlangten Begriffe; gleichwertige Schreibweisen je Eintrag mit `|` trennen, Klammern sind optional: `["(slum) dweller|(slum) dwellers"]` |
+| `need` | wie viele Einträge aus `ok` verlangt sind (Standard 1), z. B. `["stationary","constant","steady"], "need": 3` |
+| `all` | zusätzliche vollständige Antworten, die als Ganzes gelten (die Musterantwort `a` gilt immer) |
+| `lang` | Sprache der Antwort: `en` oder `de` (steuert Tastatur und Testrichtung) |
+| `add` | `true` = Zusatzkarte, nicht vom Lehrer (z. B. Lückensatz); nicht Teil des Vokabeltests |
+
+Karten ohne `ok` werden wie bisher aufgedeckt und selbst bewertet.
+

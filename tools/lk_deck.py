@@ -25,6 +25,10 @@ def validate(d):
             E(f"{k} fehlt")
     if d.get("examDate") and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d["examDate"]):
         E("examDate muss YYYY-MM-DD sein")
+    if d.get("kind") not in (None, "vocab"):
+        E("kind (Prüfungsart) muss fehlen oder \"vocab\" sein")
+    if d.get("kind") == "vocab" and not any(isinstance(c, dict) and c.get("ok") for c in (d.get("cards") or [])):
+        E("kind=vocab, aber keine Karte hat gültige Antworten (ok)")
     topics = d.get("topics") or []
     tids = [t.get("id") for t in topics]
     if not topics:
@@ -82,6 +86,20 @@ def validate(d):
                 E(f"Karte {cid}: num.tol relativ zwischen 0 und 1 (z. B. 0.02)")
             if not c.get("s"):
                 warn.append(f"Karte {cid}: Rechenkarte ohne Lösungsweg s")
+        ok = c.get("ok")
+        if ok is not None:
+            if not (isinstance(ok, list) and ok and all(isinstance(x, str) and x.strip() for x in ok)):
+                E(f"Karte {cid}: ok muss eine nicht leere Liste von Texten sein (Schreibweisen mit | trennen)")
+            elif "need" in c and not (isinstance(c["need"], int) and 1 <= c["need"] <= len(ok)):
+                E(f"Karte {cid}: need muss zwischen 1 und der Zahl der ok-Gruppen liegen")
+            elif len(ok) > 1 and "need" not in c:
+                warn.append(f"Karte {cid}: mehrere ok-Gruppen ohne need – es reicht dann eine")
+            if d.get("kind") != "vocab":
+                warn.append(f"Karte {cid}: ok wird nur bei kind=vocab ausgewertet")
+        if "all" in c and not (isinstance(c["all"], list) and all(isinstance(x, str) and x.strip() for x in c["all"])):
+            E(f"Karte {cid}: all muss Liste von Texten sein")
+        if "lang" in c and c["lang"] not in ("en", "de"):
+            E(f"Karte {cid}: lang muss en oder de sein")
         if c.get("g") is not None:
             if c["g"] not in gr:
                 E(f"Karte {cid}: Grafik {c['g']} existiert nicht")

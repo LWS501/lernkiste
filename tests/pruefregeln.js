@@ -1,0 +1,33 @@
+// Prüfregeln der Vokabelprüfung: JSDOM_PATH=/pfad/node_modules/jsdom node tests/pruefregeln.js index.html
+const fs=require('fs');const {JSDOM}=require(process.env.JSDOM_PATH || 'jsdom');
+const html=fs.readFileSync(process.argv[2],'utf8');
+const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'https://lws501.github.io/lernkiste/'});
+const w=dom.window;w.localStorage.setItem('lernkiste-v1',JSON.stringify({deck:'englisch-9-2026-11'}));
+const main=[...w.document.querySelectorAll('script:not([type])')].pop();
+w.eval(main.textContent.replace(/render\(\);checkTro\(\);\s*\}\s*$/,'window.__t={vcheck,byId,D};render();checkTro();}'));
+const {vcheck,byId,D}=w.__t;let bad=0;
+const t=(id,inp,exp)=>{const r=vcheck(byId(id),inp);const ok=r.res===exp;if(!ok)bad++;console.log(ok?'✅':'❌',id,JSON.stringify(inp),'→',r.res,ok?'':'(erwartet '+exp+') '+JSON.stringify(r))};
+t('el05','famine','ok');t('el05','Famine ','ok');t('el05','famin','near');t('el05','hunger','no');t('el05','','no');
+t('ed07','dweller','ok');t('ed07','slum dweller','ok');t('ed07','(slum) dweller','ok');t('ed07','dwellers','ok');t('ed07','dweler','near');
+t('es07','sex','ok');t('es07','gender','ok');t('es07','sex / gender','ok');t('es07','sex, male','no');
+t('ep08','stationary, constant, steady','ok');t('ep08','steady / constant / stationary','ok');t('ep08','stationary, constant','no');t('ep08','stationary constant steady','no');t('ep08','stationery, constant, steady','near');
+t('ed04','to expand','ok');t('ed04','expand','ok');t('ed04','expend','near');
+t('ep03','to increase, to decrease','ok');t('ep03','to increase, an increase / to decrease, a decrease / decline','ok');t('ep03','increase','no');
+t('el09','poverty, to be poor, the poor','ok');t('el09','living in poverty; to be poor; the poor','ok');t('el09','poverty, poor','no');
+t('enic','newly industrialized country','ok');t('enic','Newly industrialised country','ok');t('enic','new industrialised country','no');
+t('epg','RNI + immigration - emigration','ok');t('epg','rni+immigration-emigration','ok');t('epg','RNI - immigration + emigration','no');
+t('ep10','the population is aging','ok');t('ep10','an ageing population','ok');
+t('el02','There is a lack of ...','ok');t('el02','a lack of','ok');t('el02','lack','no');
+t('ep05','birth rate','ok');t('ep05','birth rate (number per 1000)','ok');t('ep05','birthrate','ok');t('ep05','death rate','no');
+t('es05','indigenous people, natives, Native American, Aborigine','ok');t('es05','indigenous people / natives / Native American (USA) / Aborigine (Australia)','ok');t('es05','natives','no');
+t('gd05','Über- und Unterbevölkerung','ok');t('gd05','Überbevölkerung, Unterbevölkerung','ok');t('gd05','Ueberbevoelkerung und Unterbevoelkerung','ok');
+t('gl01','Gesundheit; sanitäre Anlagen','ok');t('gl01','Gesundheit','no');
+t('gd07','Slumbewohner','ok');t('gd07','Bewohner','ok');t('gd07','(Slum-)Bewohner','ok');
+t('gs06','räumliche Trennung','ok');t('gs06','raeumliche trennung','ok');t('gs06','räumliche Trenung','near');
+t('gl09','Armut, arm sein, die Armen','ok');t('gs03','ethnische (= Volks-) Struktur / Gruppe / Minderheit','ok');t('gs03','ethnische Struktur, Gruppe, Minderheit','ok');
+t('gp03','sich erhöhen / weniger werden','ok');t('gd11','Marginalsiedlungen','ok');t('gd11','Marginalsiedlungen (an den Rand gedrängt, = Slums)','ok');
+t('xl1','lack','ok');t('xp4','aging','ok');t('eabbr','nic','ok');t('eabbr','NIC','ok');t('eabbr','LEDC','no');
+t('gs07','Geschlecht','ok');t('gs07','geschlecht (männlich/weiblich)','no');
+// jede Karte: eigene Musterantwort muss als richtig gelten
+D.cards.filter(c=>c.ok).forEach(c=>{const r=vcheck(c,c.a);if(r.res!=='ok'){bad++;console.log('❌ Musterantwort',c.id,c.a,JSON.stringify(r))}});
+console.log(bad?bad+' FEHLER':'alle Prüfregeln ok');process.exit(bad?1:0);

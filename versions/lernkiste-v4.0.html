@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lernkiste">
+<title>Lernkiste Geschichte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday learning for a 14-year-old: friendly, focused, playful rewards
+   IDEA a Karteikasten made from her own Geschichte notebook: ruled index cards with a red margin
+   PICTURE the index card itself, large; its back carries a diagram with the answer highlighted
+   COLOUR white paper, blue ink #1d2754, coral headline #e8664d, orange marker #f2911b; night = deep ink blue
+   TYPE Nunito 800 + Nunito
+   LAYOUT one phone column (max 560px): header pills, scrolling view, bottom tab bar; same column centred on a laptop */
+:root{--bg:#fff;--ink:#1d2754;--mut:#5b6385;--line:#e1e6f6;--card:#fff;--rule:#dde5fa;--soft:#f3f5fd;--coral:#e8664d;--orange:#f2911b;--blue:#2f4fd1;--ok:#178a57;--bad:#cf3b31;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#10142b;--ink:#e9ecff;--mut:#a7aed3;--line:#2b3262;--card:#181d3d;--rule:#232a55;--soft:#161b38;--blue:#8aa0ff;--ok:#3fc98a;--bad:#ff7a6e;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#10142b;--ink:#e9ecff;--mut:#a7aed3;--line:#2b3262;--card:#181d3d;--rule:#232a55;--soft:#161b38;--blue:#8aa0ff;--ok:#3fc98a;--bad:#ff7a6e;color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Nunito,system-ui,-apple-system,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+#app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.brand{font-weight:800;font-size:21px;letter-spacing:-.02em}
+.brand b{color:var(--coral)}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:var(--soft);border:1px solid var(--line);font-weight:800;font-size:14px;white-space:nowrap}
+.pill svg{width:15px;height:15px}
+main{flex:1;overflow-y:auto;padding:4px 16px 28px;-webkit-overflow-scrolling:touch}
+nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);background:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{min-height:58px;background:none;border:0;color:var(--mut);font:700 12px Nunito,sans-serif;display:grid;place-items:center;gap:2px;padding:6px 0;cursor:pointer}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--coral)}
+button{font:inherit;cursor:pointer}
+.btn{min-height:46px;border:0;border-radius:14px;padding:10px 14px;font-weight:800;background:var(--blue);color:#fff}
+.btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.btn.sm{min-height:44px;font-size:15px;padding:8px 12px}
+.btn:active{transform:translateY(1px)}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.h{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:20px 0 8px;line-height:1.15}
+.sub{color:var(--mut);font-size:14px}
+.mt{margin-top:14px}
+.nowrap{white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hero{background:var(--coral);color:#fff;border-radius:22px;padding:18px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center;margin-top:6px}
+.mascot{font-size:54px;width:86px;height:86px;display:grid;place-items:center;background:rgba(255,255,255,.22);border-radius:50%;line-height:1}
+.hk{font-size:14px;font-weight:700;opacity:.92}
+.hb{font-size:clamp(28px,8vw,38px);font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:2px 0 8px}
+.bar{height:14px;border-radius:99px;background:rgba(255,255,255,.3);overflow:hidden}
+.bar i{display:block;height:100%;background:#fff;border-radius:inherit;transition:width .5s}
+.hs{font-size:14px;margin-top:8px;font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{min-height:40px;border-radius:99px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.tag i{width:10px;height:10px;border-radius:50%;background:var(--c,var(--blue));flex:none}
+.tag.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mode{text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:18px;padding:14px;display:grid;gap:4px;align-content:start;min-height:112px}
+.mode b{font-size:17px;line-height:1.2}
+.mode span{font-size:14px;color:var(--mut);line-height:1.35}
+.mode.rec{border:2px solid var(--orange)}
+.mode em{font-style:normal;font-size:12px;font-weight:800;color:var(--orange)}
+.mode svg{width:30px;height:30px;margin-bottom:2px}
+details.sci{margin-top:18px;background:var(--soft);border-radius:16px;padding:12px 14px;border:1px solid var(--line)}
+details.sci summary{font-weight:800;cursor:pointer;min-height:28px}
+details.sci li{margin:6px 0;font-size:15px}
+.sbar{display:flex;align-items:center;gap:10px;margin:6px 0 12px}
+.x{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--soft);color:var(--ink);font-weight:800;flex:none}
+.grow{flex:1}
+.meter{height:10px;background:var(--soft);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.meter i{display:block;height:100%;border-radius:inherit}
+.kcard{border:1px solid var(--line);border-radius:18px;padding:18px 18px 20px 34px;min-height:340px;box-shadow:0 3px 0 var(--line);background-color:var(--card);background-image:linear-gradient(90deg,transparent 20px,rgba(232,102,77,.5) 20px,rgba(232,102,77,.5) 22px,transparent 22px),repeating-linear-gradient(180deg,transparent 0 31px,var(--rule) 31px 32px)}
+.turn{animation:turn .38s ease}
+@keyframes turn{50%{transform:scaleX(.02)}}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion:reduce){.turn,.pop,.shake{animation:none!important}}
+.ctop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--mut)}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.lv{display:inline-flex;gap:3px}
+.lv i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.lv i.f{background:var(--orange)}
+.q{font-size:clamp(22px,6vw,27px);font-weight:800;line-height:1.22;letter-spacing:-.01em;margin:12px 0 14px}
+.ans{font-size:19px;font-weight:800;line-height:1.4;margin:8px 0}
+.numin{margin:6px 0 10px}
+.numin input{flex:1;font:700 18px Nunito,sans-serif;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:var(--bg);color:var(--ink);min-height:48px}
+.unit{font-weight:800;white-space:nowrap}
+.sol{margin:6px 0 0;padding-left:20px}
+.sol li{margin:3px 0}
+.zbox.okb{border-left-color:var(--ok)}
+.zbox.nob{border-left-color:var(--bad)}
+.decks{margin:6px 0 4px}
+.hints{margin:0 0 10px;padding-left:20px;color:var(--blue);font-weight:700}
+textarea,input[type=date],select{width:100%;font:16px Nunito,sans-serif;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:var(--bg);color:var(--ink)}
+textarea{min-height:86px;margin-top:10px;resize:vertical}
+.vin{display:block;width:100%;box-sizing:border-box;font:700 18px Nunito,sans-serif;border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-top:6px;background:var(--bg);color:var(--ink);min-height:50px}
+.vin:focus{outline:3px solid var(--blue);outline-offset:1px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.three .btn{padding:8px 4px;font-size:15px}
+.c0,.r0{background:#c2362c}
+.c1,.r1{background:#b45309}
+.c2,.r2{background:#157a4d}
+.daily{display:grid;gap:2px;width:100%;text-align:left;margin-top:12px;padding:14px 16px;border-radius:18px;border:2px solid var(--orange);background:var(--card);color:var(--ink)}
+.daily .dt{font-size:19px;font-weight:800}
+.daily .ds{font-size:14px;color:var(--mut)}
+.badge{font-size:12px;font-weight:800;color:#fff;background:#b45309;border-radius:99px;padding:2px 9px}
+.notice.news{border-left-color:var(--blue);align-items:flex-start}
+.notice{margin:4px 16px;padding:10px 12px;border-radius:12px;background:var(--soft);border-left:4px solid var(--bad);font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn:disabled{opacity:.45;cursor:default}
+.zbox{background:var(--soft);border-left:4px solid var(--blue);padding:10px 12px;border-radius:10px;font-size:15px;margin:10px 0}
+.zbox.why{border-left-color:var(--orange)}
+.zbox.mine{border-left-color:var(--mut)}
+.gx{margin:12px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.gx svg{width:100%;height:auto;display:block}
+.gx text{font-family:Nunito,sans-serif;font-weight:700}
+.steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.st{padding:6px 10px;border-radius:10px;background:var(--soft);border:1px solid var(--line);font-weight:700;font-size:14px}
+.st.hl{background:var(--orange);color:#fff;border-color:transparent}
+.ar{color:var(--mut);font-weight:800}
+.tlr{display:grid;grid-template-columns:5.4em 12px minmax(0,1fr);gap:10px;align-items:center;padding:5px 0;font-size:15px}
+.tlr .y{font-weight:800;white-space:nowrap;text-align:right}
+.tlr .d{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.tlr.hl{color:var(--coral);font-weight:800}
+.tlr.hl .d{background:var(--coral)}
+.lst{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;font-size:15px}
+.lst b{white-space:nowrap}
+.lst .hl{color:var(--coral)}
+.opt{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;min-height:52px;font-weight:700}
+.opt.ok{border-color:var(--ok);box-shadow:inset 5px 0 0 var(--ok)}
+.opt.no{border-color:var(--bad);box-shadow:inset 5px 0 0 var(--bad)}
+.fb{border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--soft);border:1px solid var(--line)}
+.fb b.g{color:var(--ok)}
+.fb b.n{color:var(--bad)}
+.mgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.mcol{display:grid;gap:8px;align-content:start}
+.mi{background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:14px;padding:10px;min-height:56px;font-weight:700;font-size:15px;text-align:left}
+.mi.sel{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue)}
+.mi.done{opacity:.5;border-color:var(--ok);text-decoration:line-through}
+.shake{animation:shake .3s}
+.ck{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0;min-height:48px;font-size:15px}
+.ck .b{width:22px;height:22px;border-radius:6px;border:2px solid var(--mut);flex:none;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px}
+.ck.on{border-color:var(--ok)}
+.ck.on .b{background:var(--ok);border-color:var(--ok)}
+.big{text-align:center;padding:22px 10px}
+.big .e{font-size:76px;line-height:1;animation:pop .45s ease}
+.big .n{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:8px 0 2px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.kpi{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.kpi b{display:block;font-size:24px;font-weight:800}
+.kpi span{font-size:13px;color:var(--mut)}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) 3.4em;gap:4px 10px;align-items:center;margin:10px 0}
+.mrow .lbl{grid-column:1/-1;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px}
+.mrow .pc{text-align:right;font-weight:800;white-space:nowrap}
+.ul{padding-left:18px;margin:6px 0}
+.ul li{margin:4px 0;font-size:15px}
+.tros{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.tro{text-align:center;padding:12px 8px;border-radius:16px;background:var(--soft);border:1px solid var(--line)}
+.tro .e{font-size:42px;line-height:1.1}
+.tro b{display:block;font-size:15px;margin-top:4px}
+.tro span{font-size:12.5px;color:var(--mut);display:block;line-height:1.3}
+.tro.lock .e{filter:grayscale(1);opacity:.3}
+.card2{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:16px;font-weight:800;z-index:20;max-width:90vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.modal{position:fixed;inset:0;background:rgba(16,20,43,.55);display:grid;place-items:center;z-index:30;padding:20px}
+.modal>div{background:var(--card);color:var(--ink);border-radius:24px;padding:24px;max-width:340px;width:100%;text-align:center}
+.modal .e{font-size:96px;line-height:1;animation:pop .5s ease}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Lern<b>kiste</b></div>
+    <div class="pills" id="pills"></div>
+  </header>
+  <div id="notice"></div>
+  <main id="view" tabindex="-1"></main>
+  <nav id="nav">
+    <button data-act="nav" data-v="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Lernen</button>
+    <button data-act="nav" data-v="prog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Fortschritt</button>
+    <button data-act="nav" data-v="tro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8"/></svg>Trophäen</button>
+    <button data-act="nav" data-v="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Mehr</button>
+  </nav>
+</div>
+<!-- @@LK-DECKS-START@@ -->
+<script type="application/json" class="lk-deck" id="deck-gesch-9-2026-11">{"id": "gesch-9-2026-11", "subject": "Geschichte", "title": "Geschichte – Klassenarbeit", "examDate": "2026-11-24", "topics": [{"id": "imp", "n": "Imperialismus", "c": "#f2911b"}, {"id": "kar", "n": "Karikatur", "c": "#2f4fd1"}, {"id": "glo", "n": "Glossar", "c": "#e8664d"}, {"id": "kla", "n": "Klassengesellschaft", "c": "#8b5cf6"}, {"id": "rev", "n": "Wiener Kongress & 1848", "c": "#0e9aa7"}], "graphics": {"motive": {"k": "wheel", "c": "Imperialismus", "items": ["wirtschaftlich", "gesellschaftlich", "politisch", "kulturell", "religiös", "nationalistisch"]}, "maechte": {"k": "list", "items": [["Großbritannien", "große Gebiete in Afrika"], ["Frankreich", "großes Kolonialreich in Afrika"], ["Deutschland", "beteiligte sich am Erwerb von Kolonien"], ["Belgien", "Kongo"], ["Portugal & Spanien", "besaßen schon länger Kolonien"], ["Italien", "versuchte auch, Kolonien zu erwerben"]]}, "karikatur": {"k": "steps", "items": ["1 Formale Aspekte", "2 Beschreiben", "3 Analysieren"]}, "klassen": {"k": "pyramid", "items": ["Adel", "Bürgertum", "Kleinbürgertum", "Arbeiter & Bauern"]}, "zeit": {"k": "timeline", "items": [["1814/15", "Wiener Kongress"], ["1832", "Hambacher Fest"], ["März 1848", "Revolution, Straßenkämpfe"], ["1848", "Nationalversammlung Frankfurt"], ["1849", "Revolution scheitert"]]}, "glossar": {"k": "list", "items": [["Arbeiterbewegung", "Kampf für bessere Arbeitsbedingungen"], ["Kommunismus", "Gesellschaft ohne Klassen"], ["Sozialdemokratie", "ohne Gewalt für die Arbeiter"]]}}, "cards": [{"id": "i1", "t": "imp", "q": "Was versteht man unter Imperialismus?", "a": "Die Ausweitung von Macht und Einfluss: andere Länder erobern oder beherrschen – mit dem Ziel, ein Imperium (Weltreich) zu werden.", "z": "Die Hochphase heißt „Hochimperialismus“, etwa 1880 bis 1914.", "w": "Warum reichte vielen Staaten ihr eigenes Land nicht mehr?", "h": ["Denk an das Wort „Imperium“.", "Es geht um Macht und Einfluss – auch weit weg vom eigenen Land."], "mc": {"o": ["Ausweitung von Macht und Einfluss durch Erobern oder Beherrschen anderer Länder", "Freiwilliger Zusammenschluss gleichberechtigter Staaten zum Handel", "Kampf der Arbeiter für bessere Arbeitsbedingungen", "Rückkehr der Fürsten an die Macht nach 1815"]}, "g": "motive"}, {"id": "i2", "t": "imp", "q": "Nenne die sechs Betrachtungsebenen (Motive) des Imperialismus.", "a": "wirtschaftlich, gesellschaftlich, politisch, kulturell, religiös, nationalistisch", "x": "Eselsbrücke W-G-P-K-R-N: „Wir Gehen Pizza Kaufen, Rate Nochmal!“", "h": ["Eine Ebene hat mit Geld zu tun, eine mit Glauben.", "W – G – P – K – R – N"], "mc": {"q": "Welche Ebene steht NICHT in deiner Tabelle der Motive?", "o": ["ökologisch", "religiös", "kulturell", "nationalistisch"]}, "g": "motive"}, {"id": "i3", "t": "imp", "q": "Welche wirtschaftlichen Ziele verfolgten die Kolonialmächte?", "a": "Mehr Land und Fläche; durch Rohstoffe mehr Geld; neue Waren; mehr Steuereinnahmen; mehr günstige Arbeiter.", "z": "Kolonien waren außerdem Absatzmärkte für Waren aus der eigenen Industrie.", "w": "Warum brauchten gerade Industrieländer so viele Rohstoffe?", "h": ["Was brauchen Fabriken?", "Rohstoffe, Geld, Arbeiter …"], "mc": {"q": "Welches Motiv ist wirtschaftlich?", "o": ["Rohstoffe gewinnen und mehr Steuern einnehmen", "Andersgläubige missionieren", "Die eigene Sprache verbreiten", "Stützpunkte gewinnen"]}, "g": "motive", "hl": 0}, {"id": "i4", "t": "imp", "q": "Welches gesellschaftliche Ziel hatte der Imperialismus?", "a": "Das Volk zu Hause einen und gesellschaftliche Probleme zu Hause lösen → soziale Frage.", "x": "Die soziale Frage meint die Not der Arbeiter in der Industrialisierung.", "z": "Kolonien sollten Arbeit und Wohlstand versprechen und von den Problemen zu Hause ablenken.", "w": "Wie hängt die Not der Fabrikarbeiter mit Kolonien in Afrika zusammen?", "h": ["Es geht um Probleme zu Hause.", "Stichwort: soziale …"], "mc": {"q": "Welches Stichwort gehört zum gesellschaftlichen Motiv?", "o": ["soziale Frage", "Kräftemessen der Mächte", "Mission", "Steuereinnahmen"]}, "g": "motive", "hl": 1}, {"id": "i5", "t": "imp", "q": "Welche politischen Ziele verfolgten die Kolonialmächte?", "a": "Außenpolitischen Einfluss auf der Welt gewinnen, Stützpunkte und Macht erlangen, Kräftemessen zwischen den europäischen Mächten.", "w": "Warum wollte keine Großmacht hinter den anderen zurückbleiben?", "h": ["Es geht um Macht zwischen den Staaten.", "Stützpunkte, Einfluss, Kräftemessen"], "mc": {"q": "„Stützpunkte gewinnen und Kräftemessen der Großmächte“ – welche Ebene?", "o": ["politisch", "kulturell", "wirtschaftlich", "religiös"]}, "g": "motive", "hl": 2}, {"id": "i6", "t": "imp", "q": "Was war das kulturelle Motiv?", "a": "Die eigene Kultur verbreiten, z. B. Sprache, Kleidung, Gerichte, Werte & Normen, Bildung.", "w": "Was sagt es über die Europäer aus, dass sie ihre Kultur für „besser“ hielten?", "h": ["Sprache, Essen, Werte …"], "mc": {"q": "„Sprache, Werte und Bildung verbreiten“ – welche Ebene?", "o": ["kulturell", "politisch", "nationalistisch", "wirtschaftlich"]}, "g": "motive", "hl": 3}, {"id": "i7", "t": "imp", "q": "Was war das religiöse Motiv?", "a": "Die eigene Religion verbreiten und Andersgläubige missionieren – und dadurch Macht ausüben.", "h": ["Glaube …", "missionieren"], "mc": {"q": "„Andersgläubige missionieren“ – welche Ebene?", "o": ["religiös", "kulturell", "gesellschaftlich", "politisch"]}, "g": "motive", "hl": 4}, {"id": "i8", "t": "imp", "q": "Was war das nationalistische Motiv?", "a": "Die eigene Nation vergrößern und ihr mehr Einfluss verschaffen – mit der Überzeugung: „Die eigene Nation ist die beste.“", "h": ["Nation …", "„Wir sind die Besten“"], "mc": {"q": "„Die eigene Nation ist die beste“ – welche Ebene?", "o": ["nationalistisch", "politisch", "religiös", "kulturell"]}, "g": "motive", "hl": 5}, {"id": "i9", "t": "imp", "q": "Welche Rolle spielte Rassismus im Imperialismus?", "a": "Der Imperialismus war von Rassismus angetrieben. Rassismus findet sich in allen Formen des Imperialismus: „Kein Imperialismus ohne Rassismus.“", "z": "Die Europäer hielten sich für überlegen (oft mit dem „Sozialdarwinismus“ begründet) und rechtfertigten so Eroberung und Ausbeutung.", "w": "Warum brauchten die Kolonialmächte eine Rechtfertigung für ihre Herrschaft?", "h": ["Ein Satz aus deiner Mitschrift beginnt mit „Kein …“"], "mc": {"q": "Welcher Satz steht so in deiner Mitschrift?", "o": ["Kein Imperialismus ohne Rassismus.", "Imperialismus war frei von Rassismus.", "Rassismus gab es nur beim religiösen Motiv.", "Rassismus entstand erst nach 1914."]}}, {"id": "i10", "t": "imp", "q": "Welche europäischen Mächte betrieben vor allem Imperialismus? Nenne mindestens fünf.", "a": "Großbritannien, Frankreich, Deutschland, Belgien, Portugal & Spanien, Italien.", "h": ["Zwei große Mächte mit viel Afrika …", "… plus ein kleines Land mit dem Kongo."], "g": "maechte"}, {"id": "i11", "t": "imp", "q": "Großbritannien – was weißt du über seine Kolonien?", "a": "Großbritannien hatte große Gebiete in Afrika.", "z": "Es hatte das größte Kolonialreich der Welt, z. B. auch Indien.", "mc": {"q": "Welches Land hatte das größte Kolonialreich der Welt?", "o": ["Großbritannien", "Italien", "Belgien", "Deutschland"]}, "g": "maechte", "hl": 0}, {"id": "i12", "t": "imp", "q": "Frankreich – was weißt du über seine Kolonien?", "a": "Frankreich hatte ein großes Kolonialreich in Afrika.", "g": "maechte", "hl": 1}, {"id": "i13", "t": "imp", "q": "Welche Rolle spielte Deutschland im Imperialismus?", "a": "Deutschland beteiligte sich am Erwerb von Kolonien.", "z": "Deutschland kam spät dazu (ab 1884). Beispiele: Deutsch-Südwestafrika (heute Namibia), Deutsch-Ostafrika, Kamerun, Togo.", "mc": {"q": "Welches Gebiet war eine deutsche Kolonie?", "o": ["Deutsch-Südwestafrika (heute Namibia)", "Kongo", "Indien", "Brasilien"]}, "g": "maechte", "hl": 2}, {"id": "i14", "t": "imp", "q": "Welches Gebiet beherrschte Belgien?", "a": "Den Kongo.", "z": "Der Kongo war zuerst sogar Privatbesitz von König Leopold II.", "mc": {"q": "Welches Land beherrschte den Kongo?", "o": ["Belgien", "Frankreich", "Italien", "Portugal"]}, "g": "maechte", "hl": 3}, {"id": "i15", "t": "imp", "q": "Was unterschied Portugal & Spanien von den anderen Mächten?", "a": "Sie besaßen schon länger Kolonien.", "z": "Schon seit dem Zeitalter der Entdeckungen (ab etwa 1500).", "mc": {"q": "Welche Länder besaßen schon länger Kolonien?", "o": ["Portugal & Spanien", "Deutschland & Italien", "Belgien & Deutschland", "Italien & Frankreich"]}, "g": "maechte", "hl": 4}, {"id": "i16", "t": "imp", "q": "Was weißt du über Italien im Imperialismus?", "a": "Italien versuchte auch, Kolonien zu erwerben.", "g": "maechte", "hl": 5}, {"id": "k1", "t": "kar", "q": "In welchen drei Schritten analysierst du eine Karikatur?", "a": "1. Formale Aspekte  2. Beschreiben  3. Analysieren", "z": "Oft gehört als 4. Schritt „Beurteilen“ dazu. Frag nach, ob eure Lehrkraft das erwartet.", "h": ["Erst die Fakten zur Quelle …", "… dann was man sieht, dann was es bedeutet."], "mc": {"q": "Was ist die richtige Reihenfolge?", "o": ["Formale Aspekte → Beschreiben → Analysieren", "Analysieren → Beschreiben → Formale Aspekte", "Beschreiben → Analysieren → Formale Aspekte", "Formale Aspekte → Analysieren → Beschreiben"]}, "g": "karikatur"}, {"id": "k2", "t": "kar", "q": "Was gehört zu den formalen Aspekten einer Karikatur?", "a": "Autor, Titel, Quellenart, Wo?, Wann?, historischer Kontext.", "x": "Achtung Rechtschreibung: „Autor“ (nicht „Author“).", "h": ["Sechs Punkte: wer, wie heißt sie, welche Art …", "… wo, wann, welcher Zusammenhang."], "mc": {"q": "Was gehört NICHT zu den formalen Aspekten?", "o": ["Kritik an wen?", "Autor", "Quellenart", "historischer Kontext"]}, "g": "karikatur", "hl": 0}, {"id": "k3", "t": "kar", "q": "Was machst du beim Schritt „Beschreiben“?", "a": "Vordergrund und Hintergrund beschreiben: Was sieht man?", "w": "Warum solltest du beim Beschreiben noch nicht deuten?", "mc": {"q": "Was gehört zum Beschreiben?", "o": ["Vordergrund/Hintergrund – was sieht man?", "Kritik an wen?", "Wer ist der Autor?", "Was könnte das bedeuten?"]}, "g": "karikatur", "hl": 1}, {"id": "k4", "t": "kar", "q": "Welche Fragen stellst du beim Schritt „Analysieren“?", "a": "Was könnte das bedeuten? Wer wurde dargestellt? Kritik an wen?", "h": ["Drei Fragen: Bedeutung, Person, Kritik"], "mc": {"q": "Welche Frage gehört zum Analysieren?", "o": ["Kritik an wen?", "Wann erschien sie?", "Was ist im Hintergrund?", "Wie heißt der Titel?"]}, "g": "karikatur", "hl": 2}, {"id": "k5", "t": "kar", "q": "Zu welchem Schritt gehört: „Im Vordergrund steht ein dicker Mann mit Zylinder auf einer Weltkugel.“?", "a": "Beschreiben – du gibst wieder, was man sieht, ohne es zu deuten.", "mc": {"o": ["Beschreiben", "Formale Aspekte", "Analysieren", "Gar keinem"]}, "g": "karikatur", "hl": 1}, {"id": "k6", "t": "kar", "q": "Zu welchem Schritt gehört: „Der Zeichner kritisiert die Gier der Kolonialmächte.“?", "a": "Analysieren – du deutest die Bedeutung und sagst, wen die Karikatur kritisiert.", "mc": {"o": ["Analysieren", "Beschreiben", "Formale Aspekte", "Gar keinem"]}, "g": "karikatur", "hl": 2}, {"id": "k7", "t": "kar", "q": "Zu welchem Schritt gehört: „Die Karikatur erschien 1904 in einer deutschen Satirezeitschrift.“?", "a": "Formale Aspekte – das sind Wann, Wo und Quellenart.", "mc": {"o": ["Formale Aspekte", "Beschreiben", "Analysieren", "Gar keinem"]}, "g": "karikatur", "hl": 0}, {"id": "g1", "t": "glo", "q": "Was bedeutet „Arbeiterbewegung“?", "a": "Der Kampf für bessere Arbeitsbedingungen.", "z": "Dazu gehörten z. B. Gewerkschaften und Arbeiterparteien.", "mc": {"o": ["Kampf für bessere Arbeitsbedingungen", "Gesellschaft ohne Klassen", "Ausweitung von Macht und Einfluss", "Versammlung auf dem Hambacher Schloss"]}, "g": "glossar", "hl": 0}, {"id": "g2", "t": "glo", "q": "Was bedeutet „Kommunismus“?", "a": "Eine Gesellschaft ohne Klassen.", "z": "Nach Karl Marx sollen Fabriken und Boden allen gehören – notfalls erkämpft durch eine Revolution.", "mc": {"o": ["Gesellschaft ohne Klassen", "Ohne Gewalt für die Arbeiter", "Kampf für bessere Arbeitsbedingungen", "Herrschaft des Adels"]}, "g": "glossar", "hl": 1}, {"id": "g3", "t": "glo", "q": "Was bedeutet „Sozialdemokratie“?", "a": "Ohne Gewalt für die Arbeiter eintreten.", "z": "Also durch Reformen, Wahlen und Gesetze statt durch Revolution.", "mc": {"o": ["Ohne Gewalt für die Arbeiter", "Gesellschaft ohne Klassen", "Eigene Nation ist die beste", "Gleichgewicht der Mächte"]}, "g": "glossar", "hl": 2}, {"id": "g4", "t": "glo", "q": "Was ist der Unterschied zwischen Kommunismus und Sozialdemokratie?", "a": "Kommunismus will eine Gesellschaft ohne Klassen. Sozialdemokratie setzt sich ohne Gewalt für die Arbeiter ein.", "z": "Kommunisten hielten oft eine Revolution für nötig, Sozialdemokraten setzten auf Reformen.", "w": "Welcher Weg erscheint dir realistischer – und warum?", "g": "glossar"}, {"id": "c1", "t": "kla", "q": "Adel: Worauf beruhte seine Stellung, und welche Rolle hatte er?", "a": "Grundlage: Familienbesitz, hoher sozialer Rang → Abstammung. Führende Position in Politik und Militär.", "h": ["Man wird hineingeboren …", "Politik und …"], "mc": {"q": "Was war die Grundlage des Adels?", "o": ["Abstammung, Familienbesitz, hoher Rang", "Bildung", "Kapital aus Fabriken", "Landwirtschaft"]}, "g": "klassen", "hl": 0}, {"id": "c2", "t": "kla", "q": "Was war die Grundlage des Wirtschaftsbürgertums?", "a": "Kapital und Besitz, z. B. Familienbesitz, Unternehmen.", "mc": {"q": "Ein Fabrikbesitzer gehört zum …", "o": ["Wirtschaftsbürgertum", "Bildungsbürgertum", "Kleinbürgertum", "Adel"]}, "g": "klassen", "hl": 1}, {"id": "c3", "t": "kla", "q": "Was war die Grundlage des Bildungsbürgertums?", "a": "Bildung, z. B. Anwälte und Ärzte.", "mc": {"q": "Ein Arzt gehört zum …", "o": ["Bildungsbürgertum", "Wirtschaftsbürgertum", "Kleinbürgertum", "Proletariat"]}, "g": "klassen", "hl": 1}, {"id": "c4", "t": "kla", "q": "Wie lebte das Bürgertum, und worauf war es stolz?", "a": "In hellen, geräumigen Villen oder Wohnungen; stolz auf das eigenständig Erreichte.", "w": "Warum war „selbst erreicht“ für Bürger so wichtig – im Gegensatz zum Adel?", "g": "klassen", "hl": 1}, {"id": "c5", "t": "kla", "q": "Beschreibe das Kleinbürgertum.", "a": "Bessere Arbeitsbedingungen als Arbeiter, aber niedriger Rang; hoffen auf Aufstieg; drohende Gefahr, ins Proletariat „abzurutschen“. Z. B. Handwerker, Angestellte, Dienstmädchen.", "h": ["Zwischen Bürgertum und Arbeitern …", "Hoffnung und Angst"], "mc": {"q": "Welche Schicht hoffte auf Aufstieg und fürchtete das Abrutschen ins Proletariat?", "o": ["Kleinbürgertum", "Adel", "Bildungsbürgertum", "Bauern"]}, "g": "klassen", "hl": 2}, {"id": "c6", "t": "kla", "q": "Beschreibe die Arbeiterschaft (das Proletariat).", "a": "Grundlage: kein Besitz, nur Arbeit. Keine Rechte, keine fairen Löhne, abhängig von Fabrikbesitzern. Wohnen in prekären (unsicheren, ärmlichen) Verhältnissen.", "x": "Achtung Rechtschreibung: „Proletariat“ (nicht „Poleteriat“).", "w": "Warum entstand gerade aus dieser Schicht die Arbeiterbewegung?", "mc": {"q": "Welche Schicht hatte keinen Besitz außer ihrer Arbeit?", "o": ["Arbeiterschaft (Proletariat)", "Kleinbürgertum", "Bauern", "Bildungsbürgertum"]}, "g": "klassen", "hl": 3}, {"id": "c7", "t": "kla", "q": "Welche Probleme hatten die Bauern?", "a": "Grundlage: Landwirtschaft. Der industrielle Fortschritt führte zu rentablen Großbetrieben; ausländische Waren gefährdeten ihre Lebensgrundlage.", "z": "Zum Beispiel billiges Getreide aus Amerika und Russland.", "mc": {"q": "Was gefährdete die Lebensgrundlage der Bauern?", "o": ["Ausländische Waren und rentable Großbetriebe", "Der Wiener Kongress", "Die Mission", "Zu viel Bildung"]}, "g": "klassen", "hl": 3}, {"id": "c8", "t": "kla", "q": "Ordne die Schichten der Klassengesellschaft von oben nach unten.", "a": "Adel → Bürgertum (Wirtschafts- und Bildungsbürgertum) → Kleinbürgertum → Arbeiterschaft und Bauern", "z": "Das ist ein vereinfachtes Modell: Großbauern konnten auch wohlhabend sein.", "g": "klassen"}, {"id": "c9", "t": "kla", "q": "Wie hängen Klassengesellschaft und Imperialismus zusammen?", "a": "Die Not der Arbeiter (soziale Frage) sollte auch durch Kolonien gelöst werden: das Volk zu Hause einen und von den Problemen ablenken – das gesellschaftliche Motiv.", "z": "Diese Verknüpfung steht nicht wörtlich in der Mitschrift, ist aber eine typische Transferfrage.", "w": "Findest du, dass Kolonien die soziale Frage wirklich lösen konnten?", "g": "motive", "hl": 1}, {"id": "r1", "t": "rev", "q": "Wann fand der Wiener Kongress statt?", "a": "1814/15", "mc": {"o": ["1814/15", "1832", "1848", "1871"]}, "g": "zeit", "hl": 0}, {"id": "r2", "t": "rev", "q": "Was wollten die Fürsten auf dem Wiener Kongress?", "a": "Das Gleichgewicht der Mächte zur Sicherung des Friedens – und den eigenen Machterhalt.", "z": "Diese Politik nennt man „Restauration“: die alte Ordnung wiederherstellen.", "h": ["Zwei Ziele: Frieden und …"], "mc": {"q": "Was war ein Ziel der Fürsten 1814/15?", "o": ["Gleichgewicht der Mächte und eigener Machterhalt", "Ein deutscher Nationalstaat mit Verfassung", "Kolonien in Afrika", "Wahlrecht für alle"]}, "g": "zeit", "hl": 0}, {"id": "r3", "t": "rev", "q": "Welche Folgen hatte die Politik des Wiener Kongresses?", "a": "Die Nationalbewegung wurde unterdrückt → die Menschen waren unzufrieden und wollten mitbestimmen.", "z": "Z. B. die Karlsbader Beschlüsse 1819: Zensur und Überwachung der Universitäten.", "g": "zeit", "hl": 0}, {"id": "r4", "t": "rev", "q": "Was war der Vormärz?", "a": "Die Zeit vor der Märzrevolution 1848: Unruhen und Versammlungen, z. B. 1832 auf dem Hambacher Schloss. Forderung nach Nationalstaat und Verfassung. Die Fürsten reagierten mit Unterdrückung.", "h": ["Der Name sagt: vor dem März …", "… welchem März? 1848"], "g": "zeit", "hl": 1}, {"id": "r5", "t": "rev", "q": "Wann und wo fand die berühmte Versammlung im Vormärz statt?", "a": "1832 auf dem Hambacher Schloss (Hambacher Fest).", "z": "Dort wehten schwarz-rot-goldene Fahnen – Symbol für Einheit und Freiheit.", "mc": {"q": "Wann war das Hambacher Fest?", "o": ["1832", "1815", "1848", "1849"]}, "g": "zeit", "hl": 1}, {"id": "r6", "t": "rev", "q": "Was forderten die Menschen im Vormärz?", "a": "Einen Nationalstaat und eine Verfassung.", "z": "Kurz gesagt: „Einheit und Freiheit“.", "mc": {"o": ["Nationalstaat und Verfassung", "Kolonien und Stützpunkte", "Rückkehr der Fürsten", "Gesellschaft ohne Klassen"]}, "g": "zeit", "hl": 1}, {"id": "r7", "t": "rev", "q": "Was geschah im März 1848?", "a": "Eine aktive Revolution mit Straßenkämpfen; der preußische König versprach Reformen; die erste Nationalversammlung trat in Frankfurt zusammen.", "z": "Die Nationalversammlung tagte ab Mai 1848 in der Frankfurter Paulskirche. Der preußische König war Friedrich Wilhelm IV.", "h": ["Straßen …", "… König …", "… Frankfurt"], "g": "zeit", "hl": 2}, {"id": "r8", "t": "rev", "q": "Was war das Ziel der Nationalversammlung in Frankfurt?", "a": "Eine Verfassung mit Menschen- und Bürgerrechten und Wahlrecht.", "mc": {"o": ["Verfassung mit Menschen- und Bürgerrechten, Wahlrecht", "Gleichgewicht der Mächte", "Ein Kolonialreich in Afrika", "Die Macht der Fürsten sichern"]}, "g": "zeit", "hl": 3}, {"id": "r9", "t": "rev", "q": "Nenne Gründe, warum die Revolution scheiterte.", "a": "1. Die Fürsten erlangten die Macht zurück (sie hatten das Militär). 2. Der preußische König lehnte die Verfassung ab. 3. Die Revolutionäre waren sich nicht einig. 4. Politiker schlossen Kompromisse mit der Obrigkeit.", "z": "Genauer: 1849 lehnte Friedrich Wilhelm IV. die Kaiserkrone ab, die ihm die Nationalversammlung angeboten hatte – und damit auch die Reichsverfassung.", "h": ["Vier Gründe: Militär, König, Streit, Kompromisse"], "g": "zeit", "hl": 4}, {"id": "r10", "t": "rev", "q": "Was lehnte der preußische König ab?", "a": "Die Verfassung.", "z": "Er lehnte 1849 die ihm angebotene Kaiserkrone und damit die Reichsverfassung ab.", "mc": {"q": "Was lehnte der preußische König 1849 ab?", "o": ["Die Verfassung (und die angebotene Kaiserkrone)", "Den Wiener Kongress", "Das Hambacher Fest", "Die Kolonien in Afrika"]}, "g": "zeit", "hl": 4}, {"id": "r11", "t": "rev", "q": "Bring in die richtige Reihenfolge: Märzrevolution, Wiener Kongress, Scheitern der Revolution, Hambacher Fest.", "a": "Wiener Kongress (1814/15) → Hambacher Fest (1832) → Märzrevolution und Nationalversammlung (1848) → Scheitern (1849)", "h": ["Was kommt zuerst: 1814 oder 1832?"], "g": "zeit"}], "match": [{"n": "Ebene ↔ Motiv", "p": [["wirtschaftlich", "Rohstoffe, Steuern, günstige Arbeiter"], ["gesellschaftlich", "Volk einen, soziale Frage lösen"], ["politisch", "Stützpunkte, Kräftemessen"], ["kulturell", "Sprache, Werte, Bildung verbreiten"], ["religiös", "Andersgläubige missionieren"], ["nationalistisch", "„Eigene Nation ist die beste“"]]}, {"n": "Land ↔ Kolonien", "p": [["Großbritannien", "große Gebiete in Afrika"], ["Belgien", "Kongo"], ["Portugal & Spanien", "besaßen schon länger Kolonien"], ["Italien", "versuchte, Kolonien zu erwerben"], ["Deutschland", "beteiligte sich am Erwerb von Kolonien"]]}, {"n": "Schicht ↔ Grundlage", "p": [["Adel", "Abstammung, Familienbesitz"], ["Wirtschaftsbürgertum", "Kapital, Besitz"], ["Bildungsbürgertum", "Bildung"], ["Kleinbürgertum", "hofft auf Aufstieg"], ["Arbeiterschaft", "kein Besitz, nur Arbeit"], ["Bauern", "Landwirtschaft"]]}, {"n": "Jahr ↔ Ereignis", "p": [["1814/15", "Wiener Kongress"], ["1832", "Hambacher Fest"], ["März 1848", "Revolution mit Straßenkämpfen"], ["1849", "Revolution scheitert"]]}, {"n": "Begriff ↔ Bedeutung", "p": [["Imperialismus", "Ausweitung von Macht und Einfluss"], ["Arbeiterbewegung", "Kampf für bessere Arbeitsbedingungen"], ["Kommunismus", "Gesellschaft ohne Klassen"], ["Sozialdemokratie", "ohne Gewalt für die Arbeiter"], ["Vormärz", "Zeit vor der Revolution 1848"]]}], "exam": [{"t": "imp", "q": "Erkläre den Begriff Imperialismus und nenne drei Motive mit je einem Beispiel.", "p": ["Definition: Ausweitung von Macht und Einfluss", "andere Länder erobern/beherrschen, Ziel: Imperium (Weltreich)", "Motiv 1 mit Beispiel (z. B. wirtschaftlich: Rohstoffe)", "Motiv 2 mit Beispiel", "Motiv 3 mit Beispiel"]}, {"t": "imp", "q": "Erläutere die Aussage „Kein Imperialismus ohne Rassismus“.", "p": ["Rassismus trieb den Imperialismus an", "Europäer hielten sich für überlegen → Rechtfertigung der Herrschaft", "Rassismus steckt in allen Motiven (z. B. eigene Kultur/Religion „besser“)"]}, {"t": "kla", "q": "Vergleiche Bürgertum und Arbeiterschaft im 19. Jahrhundert.", "p": ["Bürgertum: Grundlage Kapital/Besitz bzw. Bildung", "Beispiele: Unternehmer bzw. Ärzte, Anwälte", "Wohnen: helle, geräumige Villen/Wohnungen; stolz auf Erreichtes", "Arbeiterschaft: kein Besitz, nur Arbeit", "keine Rechte, keine fairen Löhne, abhängig von Fabrikbesitzern", "Wohnen: prekäre Verhältnisse"]}, {"t": "rev", "q": "Stelle die Entwicklung vom Wiener Kongress bis zum Scheitern der Revolution dar.", "p": ["Wiener Kongress 1814/15: Gleichgewicht, Machterhalt, Unterdrückung der Nationalbewegung", "Vormärz: Unruhen, Hambacher Fest 1832, Forderung nach Nationalstaat & Verfassung", "März 1848: Straßenkämpfe, König verspricht Reformen", "Nationalversammlung in Frankfurt: Verfassung mit Grundrechten und Wahlrecht", "Scheitern: Militär der Fürsten, König lehnt ab, Uneinigkeit, Kompromisse"]}, {"t": "kar", "q": "Beschreibe, wie du bei der Analyse einer Karikatur vorgehst.", "p": ["Formale Aspekte: Autor, Titel, Quellenart, wo, wann, historischer Kontext", "Beschreiben: Vorder-/Hintergrund, was sieht man", "Analysieren: Bedeutung, wer dargestellt, Kritik an wen"]}, {"t": "kla", "q": "Erkläre, wie die soziale Frage und der Imperialismus zusammenhängen.", "p": ["Soziale Frage = Not der Arbeiter in der Industrialisierung", "gesellschaftliches Motiv: Volk zu Hause einen, Probleme lösen", "Kolonien sollten Arbeit/Wohlstand bringen und ablenken"]}], "source": "Mitschriften vom 21. und 23.11.2026"}</script>
+<script type="application/json" class="lk-deck" id="deck-englisch-9-2026-11">{"id": "englisch-9-2026-11", "subject": "Englisch", "title": "Englisch – Geography vocabulary: Population", "examDate": "2026-11-26", "source": "Vokabelliste „Geography vocabulary: Population (year 9)“", "topics": [{"id": "pop", "n": "Bevölkerungsentwicklung", "c": "#f2911b"}, {"id": "dist", "n": "Verteilung & Siedlung", "c": "#2f4fd1"}, {"id": "life", "n": "Lebensbedingungen", "c": "#e8664d"}, {"id": "soc", "n": "Gesellschaft & Entwicklung", "c": "#8b5cf6"}], "graphics": {"growth": {"k": "steps", "items": ["birth rate − death rate", "= RNI (%)", "+ immigration", "− emigration", "= population growth (%)"]}, "opp": {"k": "list", "items": [["sparsely populated", "densely populated"], ["rural", "urban"], ["underpopulation", "overpopulation"], ["village / countryside", "city"], ["to decrease", "to increase"]]}, "life": {"k": "wheel", "c": "quality of life", "items": ["health", "sanitation", "education", "famine", "poverty", "malnutrition", "illiteracy", "contraception"]}, "dev": {"k": "pyramid", "items": ["MEDC", "NIC", "LEDC"]}, "people": {"k": "list", "items": [["inhabitant", "Einwohner"], ["citizen", "Bürger"], ["(slum) dweller", "(Slum-)Bewohner"], ["foreigner", "Ausländer"], ["indigenous people", "Ureinwohner"], ["tribe", "Stamm"]]}}, "cards": [{"id": "ep01", "t": "pop", "q": "Wie heißt „Bevölkerungsentwicklung / -explosion“ auf Englisch?", "a": "population development / explosion", "h": ["Beginnt mit „po…“"], "mc": {"o": ["population development / explosion", "a surplus of … (women, births …)", "an ageing population – “the population is ageing”", "birth rate (number per 1000)"]}, "ok": ["population development", "population explosion|explosion"], "need": 2, "lang": "en"}, {"id": "gp01", "t": "pop", "q": "Was bedeutet „population development / explosion“?", "a": "Bevölkerungsentwicklung / -explosion", "mc": {"o": ["Bevölkerungsentwicklung / -explosion", "Lebenserwartung", "eine überalternde Bevölkerung", "Modell des demographischen Übergangs"]}, "ok": ["Bevölkerungsentwicklung", "Bevölkerungsexplosion|Explosion"], "need": 2, "lang": "de"}, {"id": "ep02", "t": "pop", "q": "Wie heißt „Tragfähigkeit der Erde“ auf Englisch?", "a": "carrying capacity", "h": ["Beginnt mit „ca…“"], "mc": {"o": ["carrying capacity", "birth rate (number per 1000)", "death rate (number per 1000)", "Demographic Transition Model"]}, "x": "Auf dem Blatt steht „Trangfähigkeit“ – richtig ist „Tragfähigkeit“.", "ok": ["carrying capacity"], "lang": "en"}, {"id": "gp02", "t": "pop", "q": "Was bedeutet „carrying capacity“?", "a": "Tragfähigkeit der Erde", "mc": {"o": ["Tragfähigkeit der Erde", "Lebenserwartung", "Modell des demographischen Übergangs", "Bevölkerungsentwicklung / -explosion"]}, "x": "Auf dem Blatt steht „Trangfähigkeit“ – richtig ist „Tragfähigkeit“.", "ok": ["Tragfähigkeit (der Erde)"], "lang": "de"}, {"id": "ep03", "t": "pop", "q": "Wie heißt „sich erhöhen / weniger werden“ auf Englisch?", "a": "to increase, an increase / to decrease, a decrease / decline", "h": ["Beginnt mit „in…“"], "mc": {"o": ["to increase, an increase / to decrease, a decrease / decline", "an ageing population – “the population is ageing”", "a surplus of … (women, births …)", "Demographic Transition Model"]}, "g": "opp", "hl": 4, "ok": ["to increase|an increase", "to decrease|a decrease|decline|to decline"], "need": 2, "lang": "en"}, {"id": "gp03", "t": "pop", "q": "Was bedeutet „to increase, an increase / to decrease, a decrease / decline“?", "a": "sich erhöhen / weniger werden", "mc": {"o": ["sich erhöhen / weniger werden", "natürliches Wachstum", "Sterberate", "eine überalternde Bevölkerung"]}, "g": "opp", "hl": 4, "ok": ["sich erhöhen|erhöhen|zunehmen|steigen|ansteigen|Anstieg|Zunahme|Erhöhung", "weniger werden|abnehmen|sinken|sich verringern|Abnahme|Rückgang|zurückgehen"], "need": 2, "lang": "de"}, {"id": "ep04", "t": "pop", "q": "Wie heißt „Lebenserwartung“ auf Englisch?", "a": "(high or low) life expectancy", "h": ["Beginnt mit „hi…“"], "mc": {"o": ["(high or low) life expectancy", "Demographic Transition Model", "death rate (number per 1000)", "stationary / constant / steady"]}, "ok": ["life expectancy|high life expectancy|low life expectancy"], "lang": "en"}, {"id": "gp04", "t": "pop", "q": "Was bedeutet „(high or low) life expectancy“?", "a": "Lebenserwartung", "mc": {"o": ["Lebenserwartung", "sich erhöhen / weniger werden", "gleichbleibend", "natürliches Wachstum"]}, "ok": ["Lebenserwartung|hohe Lebenserwartung|niedrige Lebenserwartung"], "lang": "de"}, {"id": "ep05", "t": "pop", "q": "Wie heißt „Geburtenrate“ auf Englisch?", "a": "birth rate (number per 1000)", "h": ["Beginnt mit „bi…“"], "mc": {"o": ["birth rate (number per 1000)", "Demographic Transition Model", "(high or low) life expectancy", "a surplus of … (women, births …)"]}, "g": "growth", "hl": 0, "ok": ["birth rate (number per 1000)|birthrate"], "lang": "en"}, {"id": "gp05", "t": "pop", "q": "Was bedeutet „birth rate (number per 1000)“?", "a": "Geburtenrate", "mc": {"o": ["Geburtenrate", "ein Überschuss an …", "sich erhöhen / weniger werden", "eine überalternde Bevölkerung"]}, "g": "growth", "hl": 0, "ok": ["Geburtenrate"], "lang": "de"}, {"id": "ep06", "t": "pop", "q": "Wie heißt „Sterberate“ auf Englisch?", "a": "death rate (number per 1000)", "h": ["Beginnt mit „de…“"], "mc": {"o": ["death rate (number per 1000)", "(high or low) life expectancy", "birth rate (number per 1000)", "Demographic Transition Model"]}, "g": "growth", "hl": 0, "ok": ["death rate (number per 1000)|deathrate"], "lang": "en"}, {"id": "gp06", "t": "pop", "q": "Was bedeutet „death rate (number per 1000)“?", "a": "Sterberate", "mc": {"o": ["Sterberate", "natürliches Wachstum", "ein Überschuss an …", "Tragfähigkeit der Erde"]}, "g": "growth", "hl": 0, "ok": ["Sterberate|Sterblichkeitsrate|Todesrate"], "lang": "de"}, {"id": "ep07", "t": "pop", "q": "Wie heißt „natürliches Wachstum“ auf Englisch?", "a": "rate of natural increase (RNI) in per cent", "h": ["Beginnt mit „ra…“"], "mc": {"o": ["rate of natural increase (RNI) in per cent", "birth rate (number per 1000)", "carrying capacity", "an ageing population – “the population is ageing”"]}, "g": "growth", "hl": 1, "x": "Beispiel auf dem Blatt: 2 %.", "ok": ["rate of natural increase (RNI) (in per cent)|natural increase|RNI"], "lang": "en"}, {"id": "gp07", "t": "pop", "q": "Was bedeutet „rate of natural increase (RNI) in per cent“?", "a": "natürliches Wachstum", "mc": {"o": ["natürliches Wachstum", "gleichbleibend", "sich erhöhen / weniger werden", "ein Überschuss an …"]}, "g": "growth", "hl": 1, "x": "Beispiel auf dem Blatt: 2 %.", "ok": ["natürliches Wachstum|natürliche Wachstumsrate|natürlicher Zuwachs|Rate des natürlichen Wachstums"], "lang": "de"}, {"id": "ep08", "t": "pop", "q": "Wie heißt „gleichbleibend“ auf Englisch?", "a": "stationary / constant / steady", "h": ["Beginnt mit „st…“"], "mc": {"o": ["stationary / constant / steady", "birth rate (number per 1000)", "Demographic Transition Model", "to increase, an increase / to decrease, a decrease / decline"]}, "ok": ["stationary", "constant", "steady"], "need": 3, "lang": "en"}, {"id": "gp08", "t": "pop", "q": "Was bedeutet „stationary / constant / steady“?", "a": "gleichbleibend", "mc": {"o": ["gleichbleibend", "Geburtenrate", "Lebenserwartung", "Bevölkerungsentwicklung / -explosion"]}, "ok": ["gleichbleibend|konstant|stabil|stationär|beständig"], "lang": "de"}, {"id": "ep09", "t": "pop", "q": "Wie heißt „Modell des demographischen Übergangs“ auf Englisch?", "a": "Demographic Transition Model", "h": ["Beginnt mit „De…“"], "mc": {"o": ["Demographic Transition Model", "death rate (number per 1000)", "stationary / constant / steady", "(high or low) life expectancy"]}, "ok": ["Demographic Transition Model|model of demographic transition|DTM"], "lang": "en"}, {"id": "gp09", "t": "pop", "q": "Was bedeutet „Demographic Transition Model“?", "a": "Modell des demographischen Übergangs", "mc": {"o": ["Modell des demographischen Übergangs", "eine überalternde Bevölkerung", "Sterberate", "Tragfähigkeit der Erde"]}, "ok": ["Modell des demographischen Übergangs|Modell des demografischen Übergangs|demographisches Übergangsmodell|demografisches Übergangsmodell"], "lang": "de"}, {"id": "ep10", "t": "pop", "q": "Wie heißt „eine überalternde Bevölkerung“ auf Englisch?", "a": "an ageing population – “the population is ageing”", "h": ["Beginnt mit „ag…“"], "mc": {"o": ["an ageing population – “the population is ageing”", "rate of natural increase (RNI) in per cent", "death rate (number per 1000)", "(high or low) life expectancy"]}, "x": "Britische Schreibweise „ageing“ (amerikanisch „aging“).", "ok": ["an ageing population|the population is ageing"], "lang": "en"}, {"id": "gp10", "t": "pop", "q": "Was bedeutet „an ageing population – “the population is ageing”“?", "a": "eine überalternde Bevölkerung", "mc": {"o": ["eine überalternde Bevölkerung", "Modell des demographischen Übergangs", "Bevölkerungsentwicklung / -explosion", "sich erhöhen / weniger werden"]}, "x": "Britische Schreibweise „ageing“ (amerikanisch „aging“).", "ok": ["eine überalternde Bevölkerung|alternde Bevölkerung|die Bevölkerung altert|die Bevölkerung überaltert|Überalterung"], "lang": "de"}, {"id": "ep11", "t": "pop", "q": "Wie heißt „ein Überschuss an …“ auf Englisch?", "a": "a surplus of … (women, births …)", "h": ["Beginnt mit „su…“"], "mc": {"o": ["a surplus of … (women, births …)", "(high or low) life expectancy", "an ageing population – “the population is ageing”", "Demographic Transition Model"]}, "ok": ["a surplus of|surplus"], "lang": "en"}, {"id": "gp11", "t": "pop", "q": "Was bedeutet „a surplus of … (women, births …)“?", "a": "ein Überschuss an …", "mc": {"o": ["ein Überschuss an …", "gleichbleibend", "Sterberate", "eine überalternde Bevölkerung"]}, "ok": ["ein Überschuss an|Überschuss"], "lang": "de"}, {"id": "ed01", "t": "dist", "q": "Wie heißt „Bevölkerungsdichte“ auf Englisch?", "a": "population density (people per km²)", "h": ["Beginnt mit „po…“"], "mc": {"o": ["population density (people per km²)", "living space", "overpopulation (= overcrowded) / underpopulation", "(slum) dweller"]}, "x": "Beispiel auf dem Blatt: 300 people per km².", "ok": ["population density (people per km²)"], "lang": "en"}, {"id": "gd01", "t": "dist", "q": "Was bedeutet „population density (people per km²)“?", "a": "Bevölkerungsdichte", "mc": {"o": ["Bevölkerungsdichte", "Über- und Unterbevölkerung", "wenig / dicht besiedelt", "sich ausdehnen"]}, "x": "Beispiel auf dem Blatt: 300 people per km².", "ok": ["Bevölkerungsdichte"], "lang": "de"}, {"id": "ed02", "t": "dist", "q": "Wie heißt „Bevölkerungsverteilung“ auf Englisch?", "a": "population distribution (where do people live?)", "h": ["Beginnt mit „po…“"], "mc": {"o": ["population distribution (where do people live?)", "settlement", "living space", "(slum) dweller"]}, "ok": ["population distribution"], "lang": "en"}, {"id": "gd02", "t": "dist", "q": "Was bedeutet „population distribution (where do people live?)“?", "a": "Bevölkerungsverteilung", "mc": {"o": ["Bevölkerungsverteilung", "Marginalsiedlungen (an den Rand gedrängt, = Slums)", "Einwohner", "Siedlung"]}, "ok": ["Bevölkerungsverteilung"], "lang": "de"}, {"id": "ed03", "t": "dist", "q": "Wie heißt „wenig / dicht besiedelt“ auf Englisch?", "a": "sparsely / densely populated", "h": ["Beginnt mit „sp…“"], "mc": {"o": ["sparsely / densely populated", "settlement", "(slum) dweller", "to expand"]}, "g": "opp", "hl": 0, "ok": ["sparsely populated|sparsely", "densely populated|densely"], "need": 2, "lang": "en"}, {"id": "gd03", "t": "dist", "q": "Was bedeutet „sparsely / densely populated“?", "a": "wenig / dicht besiedelt", "mc": {"o": ["wenig / dicht besiedelt", "sich ausdehnen", "(Slum-)Bewohner", "Marginalsiedlungen (an den Rand gedrängt, = Slums)"]}, "g": "opp", "hl": 0, "ok": ["wenig besiedelt|dünn besiedelt|wenig|dünn", "dicht besiedelt|dicht"], "need": 2, "lang": "de"}, {"id": "ed04", "t": "dist", "q": "Wie heißt „sich ausdehnen“ auf Englisch?", "a": "to expand", "h": ["Beginnt mit „ex…“"], "mc": {"o": ["to expand", "overpopulation (= overcrowded) / underpopulation", "population distribution (where do people live?)", "inhabitant"]}, "ok": ["to expand"], "lang": "en"}, {"id": "gd04", "t": "dist", "q": "Was bedeutet „to expand“?", "a": "sich ausdehnen", "mc": {"o": ["sich ausdehnen", "(Slum-)Bewohner", "wenig / dicht besiedelt", "Wohnraum"]}, "ok": ["sich ausdehnen|ausdehnen|expandieren|sich ausbreiten|sich vergrößern|erweitern"], "lang": "de"}, {"id": "ed05", "t": "dist", "q": "Wie heißt „Über- und Unterbevölkerung“ auf Englisch?", "a": "overpopulation (= overcrowded) / underpopulation", "h": ["Beginnt mit „ov…“"], "mc": {"o": ["overpopulation (= overcrowded) / underpopulation", "marginalised settlements", "sparsely / densely populated", "population density (people per km²)"]}, "g": "opp", "hl": 2, "ok": ["overpopulation|overcrowded|overcrowding", "underpopulation"], "need": 2, "lang": "en"}, {"id": "gd05", "t": "dist", "q": "Was bedeutet „overpopulation (= overcrowded) / underpopulation“?", "a": "Über- und Unterbevölkerung", "mc": {"o": ["Über- und Unterbevölkerung", "Siedlung", "sich ausdehnen", "Einwohner"]}, "g": "opp", "hl": 2, "ok": ["Überbevölkerung|Über|überbevölkert", "Unterbevölkerung|unterbevölkert"], "need": 2, "lang": "de"}, {"id": "ed06", "t": "dist", "q": "Wie heißt „Einwohner“ auf Englisch?", "a": "inhabitant", "h": ["Beginnt mit „in…“"], "mc": {"o": ["inhabitant", "citizen", "living space", "overpopulation (= overcrowded) / underpopulation"]}, "g": "people", "hl": 0, "ok": ["inhabitant|inhabitants"], "lang": "en"}, {"id": "gd06", "t": "dist", "q": "Was bedeutet „inhabitant“?", "a": "Einwohner", "mc": {"o": ["Einwohner", "(Slum-)Bewohner", "Bevölkerungsverteilung", "Bürger (Bewohner einer Stadt)"]}, "g": "people", "hl": 0, "ok": ["Einwohner|Bewohner"], "lang": "de"}, {"id": "ed07", "t": "dist", "q": "Wie heißt „(Slum-)Bewohner“ auf Englisch?", "a": "(slum) dweller", "h": ["Beginnt mit „sl…“"], "mc": {"o": ["(slum) dweller", "to expand", "living space", "inhabitant"]}, "g": "people", "hl": 2, "ok": ["(slum) dweller|(slum) dwellers"], "lang": "en"}, {"id": "gd07", "t": "dist", "q": "Was bedeutet „(slum) dweller“?", "a": "(Slum-)Bewohner", "mc": {"o": ["(Slum-)Bewohner", "Siedlung", "Einwohner", "Bürger (Bewohner einer Stadt)"]}, "g": "people", "hl": 2, "ok": ["(Slum-)Bewohner"], "lang": "de"}, {"id": "ed08", "t": "dist", "q": "Wie heißt „Bürger (Bewohner einer Stadt)“ auf Englisch?", "a": "citizen", "h": ["Beginnt mit „ci…“"], "mc": {"o": ["citizen", "marginalised settlements", "overpopulation (= overcrowded) / underpopulation", "settlement"]}, "g": "people", "hl": 1, "z": "„citizen“ heißt auch „Staatsbürger“.", "ok": ["citizen|citizens"], "lang": "en"}, {"id": "gd08", "t": "dist", "q": "Was bedeutet „citizen“?", "a": "Bürger (Bewohner einer Stadt)", "mc": {"o": ["Bürger (Bewohner einer Stadt)", "Marginalsiedlungen (an den Rand gedrängt, = Slums)", "Über- und Unterbevölkerung", "Bevölkerungsverteilung"]}, "g": "people", "hl": 1, "z": "„citizen“ heißt auch „Staatsbürger“.", "ok": ["Bürger (Bewohner einer Stadt)|Staatsbürger|Bürgerin"], "lang": "de"}, {"id": "ed09", "t": "dist", "q": "Wie heißt „Siedlung“ auf Englisch?", "a": "settlement", "h": ["Beginnt mit „se…“"], "mc": {"o": ["settlement", "population distribution (where do people live?)", "inhabitant", "overpopulation (= overcrowded) / underpopulation"]}, "ok": ["settlement|settlements"], "lang": "en"}, {"id": "gd09", "t": "dist", "q": "Was bedeutet „settlement“?", "a": "Siedlung", "mc": {"o": ["Siedlung", "sich ausdehnen", "Bürger (Bewohner einer Stadt)", "Über- und Unterbevölkerung"]}, "ok": ["Siedlung|Ansiedlung"], "lang": "de"}, {"id": "ed11", "t": "dist", "q": "Wie heißt „Marginalsiedlungen (an den Rand gedrängt, = Slums)“ auf Englisch?", "a": "marginalised settlements", "h": ["Beginnt mit „ma…“"], "mc": {"o": ["marginalised settlements", "settlement", "to expand", "population density (people per km²)"]}, "ok": ["marginalised settlements|marginalised settlement"], "lang": "en"}, {"id": "gd11", "t": "dist", "q": "Was bedeutet „marginalised settlements“?", "a": "Marginalsiedlungen (an den Rand gedrängt, = Slums)", "mc": {"o": ["Marginalsiedlungen (an den Rand gedrängt, = Slums)", "Über- und Unterbevölkerung", "sich ausdehnen", "Wohnraum"]}, "ok": ["Marginalsiedlungen|Marginalsiedlung|Slums|Slum|Elendsviertel"], "lang": "de"}, {"id": "ed12", "t": "dist", "q": "Wie heißt „Wohnraum“ auf Englisch?", "a": "living space", "h": ["Beginnt mit „li…“"], "mc": {"o": ["living space", "inhabitant", "citizen", "marginalised settlements"]}, "ok": ["living space"], "lang": "en"}, {"id": "gd12", "t": "dist", "q": "Was bedeutet „living space“?", "a": "Wohnraum", "mc": {"o": ["Wohnraum", "(Slum-)Bewohner", "Bevölkerungsverteilung", "Bürger (Bewohner einer Stadt)"]}, "ok": ["Wohnraum|Wohnfläche"], "lang": "de"}, {"id": "el01", "t": "life", "q": "Wie heißt „Gesundheit; sanitäre Anlagen“ auf Englisch?", "a": "health; sanitation", "h": ["Beginnt mit „he…“"], "mc": {"o": ["health; sanitation", "famine", "There is a lack of …", "education, to be educated, to receive a (good) education"]}, "g": "life", "hl": 1, "ok": ["health", "sanitation"], "need": 2, "lang": "en"}, {"id": "gl01", "t": "life", "q": "Was bedeutet „health; sanitation“?", "a": "Gesundheit; sanitäre Anlagen", "mc": {"o": ["Gesundheit; sanitäre Anlagen", "Armut, arm sein, die Armen", "Hungersnot", "Es gibt einen Mangel an …"]}, "g": "life", "hl": 1, "ok": ["Gesundheit", "sanitäre Anlagen|Sanitäranlagen|sanitäre Einrichtungen"], "need": 2, "lang": "de"}, {"id": "el02", "t": "life", "q": "Wie heißt „Es gibt einen Mangel an …“ auf Englisch?", "a": "There is a lack of …", "h": ["Beginnt mit „Th…“"], "mc": {"o": ["There is a lack of …", "living conditions (high or low quality of life)", "contraception, to use a contraceptive (the pill, condoms)", "education, to be educated, to receive a (good) education"]}, "ok": ["there is a lack of|a lack of"], "lang": "en"}, {"id": "gl02", "t": "life", "q": "Was bedeutet „There is a lack of …“?", "a": "Es gibt einen Mangel an …", "mc": {"o": ["Es gibt einen Mangel an …", "Sterilisation; Abtreibung", "Gesundheit; sanitäre Anlagen", "Lebensbedingungen"]}, "ok": ["Es gibt einen Mangel an|ein Mangel an|Es mangelt an|Es fehlt an"], "lang": "de"}, {"id": "el03", "t": "life", "q": "Wie heißt „Bildung, gebildet sein, Bildung erhalten“ auf Englisch?", "a": "education, to be educated, to receive a (good) education", "h": ["Beginnt mit „ed…“"], "mc": {"o": ["education, to be educated, to receive a (good) education", "famine", "sterilisation; abortion", "living conditions (high or low quality of life)"]}, "g": "life", "hl": 2, "ok": ["education", "to be educated|educated", "to receive a (good) education|to receive an education|to receive education|to get a (good) education|to get an education"], "need": 3, "lang": "en"}, {"id": "gl03", "t": "life", "q": "Was bedeutet „education, to be educated, to receive a (good) education“?", "a": "Bildung, gebildet sein, Bildung erhalten", "mc": {"o": ["Bildung, gebildet sein, Bildung erhalten", "Fehlernährung", "Gesundheit; sanitäre Anlagen", "Hungersnot"]}, "g": "life", "hl": 2, "ok": ["Bildung", "gebildet sein|gebildet", "Bildung erhalten|eine Bildung erhalten|eine gute Bildung erhalten|gute Bildung erhalten|Bildung bekommen|eine gute Bildung bekommen"], "need": 3, "lang": "de"}, {"id": "el04", "t": "life", "q": "Wie heißt „Verhütung, (ein) Verhütungsmittel benutzen“ auf Englisch?", "a": "contraception, to use a contraceptive (the pill, condoms)", "h": ["Beginnt mit „co…“"], "mc": {"o": ["contraception, to use a contraceptive (the pill, condoms)", "retirement (age)", "sterilisation; abortion", "There is a lack of …"]}, "g": "life", "hl": 7, "ok": ["contraception", "to use a contraceptive|to use contraceptives|contraceptive|contraceptives"], "need": 2, "lang": "en"}, {"id": "gl04", "t": "life", "q": "Was bedeutet „contraception, to use a contraceptive (the pill, condoms)“?", "a": "Verhütung, (ein) Verhütungsmittel benutzen", "mc": {"o": ["Verhütung, (ein) Verhütungsmittel benutzen", "Analphabetismus, Analphabet sein", "Bildung, gebildet sein, Bildung erhalten", "Fehlernährung"]}, "g": "life", "hl": 7, "ok": ["Verhütung", "(ein) Verhütungsmittel benutzen|Verhütungsmittel|(ein) Verhütungsmittel verwenden|(ein) Verhütungsmittel nutzen|verhüten"], "need": 2, "lang": "de"}, {"id": "el05", "t": "life", "q": "Wie heißt „Hungersnot“ auf Englisch?", "a": "famine", "h": ["Beginnt mit „fa…“"], "mc": {"o": ["famine", "sterilisation; abortion", "health; sanitation", "education, to be educated, to receive a (good) education"]}, "g": "life", "hl": 3, "ok": ["famine"], "lang": "en"}, {"id": "gl05", "t": "life", "q": "Was bedeutet „famine“?", "a": "Hungersnot", "mc": {"o": ["Hungersnot", "Analphabetismus, Analphabet sein", "Armut, arm sein, die Armen", "Bildung, gebildet sein, Bildung erhalten"]}, "g": "life", "hl": 3, "ok": ["Hungersnot"], "lang": "de"}, {"id": "el06", "t": "life", "q": "Wie heißt „Analphabetismus, Analphabet sein“ auf Englisch?", "a": "illiteracy, to be illiterate", "h": ["Beginnt mit „il…“"], "mc": {"o": ["illiteracy, to be illiterate", "living conditions (high or low quality of life)", "(living in) poverty; to be poor; the poor", "There is a lack of …"]}, "g": "life", "hl": 6, "ok": ["illiteracy", "to be illiterate|illiterate"], "need": 2, "lang": "en"}, {"id": "gl06", "t": "life", "q": "Was bedeutet „illiteracy, to be illiterate“?", "a": "Analphabetismus, Analphabet sein", "mc": {"o": ["Analphabetismus, Analphabet sein", "Fehlernährung", "Verhütung, (ein) Verhütungsmittel benutzen", "Lebensbedingungen"]}, "g": "life", "hl": 6, "ok": ["Analphabetismus", "Analphabet sein|Analphabet|Analphabetin sein"], "need": 2, "lang": "de"}, {"id": "el07", "t": "life", "q": "Wie heißt „Rente (Rentenalter)“ auf Englisch?", "a": "retirement (age)", "h": ["Beginnt mit „re…“"], "mc": {"o": ["retirement (age)", "(living in) poverty; to be poor; the poor", "illiteracy, to be illiterate", "famine"]}, "ok": ["retirement (age)"], "lang": "en"}, {"id": "gl07", "t": "life", "q": "Was bedeutet „retirement (age)“?", "a": "Rente (Rentenalter)", "mc": {"o": ["Rente (Rentenalter)", "Gesundheit; sanitäre Anlagen", "Fehlernährung", "Verhütung, (ein) Verhütungsmittel benutzen"]}, "ok": ["Rente (Rentenalter)|Ruhestand|Rentenalter|Pensionierung"], "lang": "de"}, {"id": "el08", "t": "life", "q": "Wie heißt „Lebensbedingungen“ auf Englisch?", "a": "living conditions (high or low quality of life)", "h": ["Beginnt mit „li…“"], "mc": {"o": ["living conditions (high or low quality of life)", "education, to be educated, to receive a (good) education", "retirement (age)", "There is a lack of …"]}, "g": "life", "ok": ["living conditions"], "lang": "en"}, {"id": "gl08", "t": "life", "q": "Was bedeutet „living conditions (high or low quality of life)“?", "a": "Lebensbedingungen", "mc": {"o": ["Lebensbedingungen", "Hungersnot", "Rente (Rentenalter)", "Es gibt einen Mangel an …"]}, "g": "life", "ok": ["Lebensbedingungen|Lebensumstände|Lebensverhältnisse"], "lang": "de"}, {"id": "el09", "t": "life", "q": "Wie heißt „Armut, arm sein, die Armen“ auf Englisch?", "a": "(living in) poverty; to be poor; the poor", "h": ["Beginnt mit „li…“"], "mc": {"o": ["(living in) poverty; to be poor; the poor", "malnutrition", "famine", "There is a lack of …"]}, "g": "life", "hl": 4, "ok": ["(living in) poverty", "to be poor|poor", "the poor"], "need": 3, "lang": "en"}, {"id": "gl09", "t": "life", "q": "Was bedeutet „(living in) poverty; to be poor; the poor“?", "a": "Armut, arm sein, die Armen", "mc": {"o": ["Armut, arm sein, die Armen", "Verhütung, (ein) Verhütungsmittel benutzen", "Rente (Rentenalter)", "Lebensbedingungen"]}, "g": "life", "hl": 4, "ok": ["Armut|in Armut leben", "arm sein|arm", "die Armen|Arme"], "need": 3, "lang": "de"}, {"id": "el10", "t": "life", "q": "Wie heißt „Fehlernährung“ auf Englisch?", "a": "malnutrition", "h": ["Beginnt mit „ma…“"], "mc": {"o": ["malnutrition", "famine", "retirement (age)", "sterilisation; abortion"]}, "g": "life", "hl": 5, "z": "Oft auch „Mangel-“ oder „Unterernährung“.", "ok": ["malnutrition"], "lang": "en"}, {"id": "gl10", "t": "life", "q": "Was bedeutet „malnutrition“?", "a": "Fehlernährung", "mc": {"o": ["Fehlernährung", "Analphabetismus, Analphabet sein", "Verhütung, (ein) Verhütungsmittel benutzen", "Bildung, gebildet sein, Bildung erhalten"]}, "g": "life", "hl": 5, "z": "Oft auch „Mangel-“ oder „Unterernährung“.", "ok": ["Fehlernährung|Mangelernährung|Unterernährung"], "lang": "de"}, {"id": "el11", "t": "life", "q": "Wie heißt „Sterilisation; Abtreibung“ auf Englisch?", "a": "sterilisation; abortion", "h": ["Beginnt mit „st…“"], "mc": {"o": ["sterilisation; abortion", "There is a lack of …", "education, to be educated, to receive a (good) education", "health; sanitation"]}, "ok": ["sterilisation", "abortion"], "need": 2, "lang": "en"}, {"id": "gl11", "t": "life", "q": "Was bedeutet „sterilisation; abortion“?", "a": "Sterilisation; Abtreibung", "mc": {"o": ["Sterilisation; Abtreibung", "Gesundheit; sanitäre Anlagen", "Es gibt einen Mangel an …", "Lebensbedingungen"]}, "ok": ["Sterilisation|Sterilisierung", "Abtreibung|Schwangerschaftsabbruch"], "need": 2, "lang": "de"}, {"id": "es01", "t": "soc", "q": "Wie heißt „Ausländer“ auf Englisch?", "a": "foreigner", "h": ["Beginnt mit „fo…“"], "mc": {"o": ["foreigner", "tribe", "indigenous people / natives / Native American (USA) / Aborigine (Australia)", "ethnic structure / group / minority"]}, "g": "people", "hl": 3, "ok": ["foreigner|foreigners"], "lang": "en"}, {"id": "gs01", "t": "soc", "q": "Was bedeutet „foreigner“?", "a": "Ausländer", "mc": {"o": ["Ausländer", "multikulturell", "Geschlecht", "ethnische (= Volks-) Struktur / Gruppe / Minderheit"]}, "g": "people", "hl": 3, "ok": ["Ausländer|Ausländerin"], "lang": "de"}, {"id": "es02", "t": "soc", "q": "Wie heißt „multikulturell“ auf Englisch?", "a": "multicultural", "h": ["Beginnt mit „mu…“"], "mc": {"o": ["multicultural", "spatial segregation", "tribe", "sex / gender (= male / female)"]}, "ok": ["multicultural"], "lang": "en"}, {"id": "gs02", "t": "soc", "q": "Was bedeutet „multicultural“?", "a": "multikulturell", "mc": {"o": ["multikulturell", "räumliche Trennung", "Ausländer", "ethnische (= Volks-) Struktur / Gruppe / Minderheit"]}, "ok": ["multikulturell"], "lang": "de"}, {"id": "es03", "t": "soc", "q": "Wie heißt „ethnische (= Volks-) Struktur / Gruppe / Minderheit“ auf Englisch?", "a": "ethnic structure / group / minority", "h": ["Beginnt mit „et…“"], "mc": {"o": ["ethnic structure / group / minority", "spatial segregation", "sex / gender (= male / female)", "multicultural"]}, "ok": ["ethnic structure|structure", "ethnic group|group", "ethnic minority|minority"], "need": 3, "lang": "en"}, {"id": "gs03", "t": "soc", "q": "Was bedeutet „ethnic structure / group / minority“?", "a": "ethnische (= Volks-) Struktur / Gruppe / Minderheit", "mc": {"o": ["ethnische (= Volks-) Struktur / Gruppe / Minderheit", "Geschlecht", "Stamm", "Ausländer"]}, "ok": ["ethnische Struktur|Struktur|Volksstruktur", "ethnische Gruppe|Gruppe|Volksgruppe", "ethnische Minderheit|Minderheit"], "need": 3, "lang": "de"}, {"id": "es04", "t": "soc", "q": "Wie heißt „Stamm“ auf Englisch?", "a": "tribe", "h": ["Beginnt mit „tr…“"], "mc": {"o": ["tribe", "sex / gender (= male / female)", "indigenous people / natives / Native American (USA) / Aborigine (Australia)", "spatial segregation"]}, "g": "people", "hl": 5, "ok": ["tribe|tribes"], "lang": "en"}, {"id": "gs04", "t": "soc", "q": "Was bedeutet „tribe“?", "a": "Stamm", "mc": {"o": ["Stamm", "ethnische (= Volks-) Struktur / Gruppe / Minderheit", "multikulturell", "Ureinwohner"]}, "g": "people", "hl": 5, "ok": ["Stamm|Volksstamm"], "lang": "de"}, {"id": "es05", "t": "soc", "q": "Wie heißt „Ureinwohner“ auf Englisch?", "a": "indigenous people / natives / Native American (USA) / Aborigine (Australia)", "h": ["Beginnt mit „in…“"], "mc": {"o": ["indigenous people / natives / Native American (USA) / Aborigine (Australia)", "sex / gender (= male / female)", "multicultural", "ethnic structure / group / minority"]}, "g": "people", "hl": 4, "ok": ["indigenous people|indigenous peoples", "natives|native", "Native American (USA)|Native Americans", "Aborigine (Australia)|Aborigines|Aboriginal|Aboriginals"], "need": 4, "lang": "en"}, {"id": "gs05", "t": "soc", "q": "Was bedeutet „indigenous people / natives / Native American (USA) / Aborigine (Australia)“?", "a": "Ureinwohner", "mc": {"o": ["Ureinwohner", "Stamm", "räumliche Trennung", "ethnische (= Volks-) Struktur / Gruppe / Minderheit"]}, "g": "people", "hl": 4, "ok": ["Ureinwohner|Eingeborene|indigene Völker|Indigene|Urbevölkerung|indigene Bevölkerung"], "lang": "de"}, {"id": "es06", "t": "soc", "q": "Wie heißt „räumliche Trennung“ auf Englisch?", "a": "spatial segregation", "h": ["Beginnt mit „sp…“"], "mc": {"o": ["spatial segregation", "ethnic structure / group / minority", "indigenous people / natives / Native American (USA) / Aborigine (Australia)", "foreigner"]}, "ok": ["spatial segregation"], "lang": "en"}, {"id": "gs06", "t": "soc", "q": "Was bedeutet „spatial segregation“?", "a": "räumliche Trennung", "mc": {"o": ["räumliche Trennung", "Ausländer", "multikulturell", "Ureinwohner"]}, "ok": ["räumliche Trennung|räumliche Segregation"], "lang": "de"}, {"id": "es07", "t": "soc", "q": "Wie heißt „Geschlecht“ auf Englisch?", "a": "sex / gender (= male / female)", "h": ["Beginnt mit „se…“"], "mc": {"o": ["sex / gender (= male / female)", "ethnic structure / group / minority", "multicultural", "foreigner"]}, "z": "Feiner Unterschied: „sex“ meint eher das biologische, „gender“ das soziale Geschlecht.", "ok": ["sex|gender"], "lang": "en"}, {"id": "gs07", "t": "soc", "q": "Was bedeutet „sex / gender (= male / female)“?", "a": "Geschlecht", "mc": {"o": ["Geschlecht", "Ureinwohner", "multikulturell", "ethnische (= Volks-) Struktur / Gruppe / Minderheit"]}, "z": "Feiner Unterschied: „sex“ meint eher das biologische, „gender“ das soziale Geschlecht.", "ok": ["Geschlecht"], "lang": "de"}, {"id": "epg", "t": "pop", "q": "Population growth (in per cent) = ?", "a": "RNI + immigration − emigration", "x": "Auf dem Blatt steht „RNI + migration − emigration“. Gemeint ist immigration (Zuwanderung) minus emigration (Auswanderung).", "h": ["RNI plus Zuwanderung …", "… minus Auswanderung"], "g": "growth", "hl": 4, "mc": {"o": ["RNI + immigration − emigration", "RNI − immigration + emigration", "birth rate + death rate", "RNI × migration"]}, "ok": ["RNI + immigration − emigration|RNI + migration − emigration|RNI+immigration-emigration|RNI+migration-emigration|rate of natural increase + immigration − emigration"], "lang": "en"}, {"id": "eru", "t": "dist", "q": "Was bedeutet „rural vs. urban“?", "a": "rural = countryside / village (rural settlement); urban = city (urban settlement)", "z": "Auf Deutsch: ländlich vs. städtisch (steht nicht auf dem Blatt).", "g": "opp", "hl": 1, "mc": {"o": ["rural = village / countryside; urban = city", "rural = city; urban = village", "rural = poor; urban = rich", "rural = old; urban = new"]}}, {"id": "eru2", "t": "dist", "q": "Wie heißt „ländlich / städtisch“ auf Englisch?", "a": "rural / urban", "x": "Merkhilfe: urban – wie „Urbanisierung“ (Verstädterung).", "g": "opp", "hl": 1, "h": ["Beginnt mit „ru…“ und „ur…“"], "mc": {"o": ["rural / urban", "urban / rural", "sparsely / densely", "village / settlement"]}, "ok": ["rural", "urban"], "need": 2, "lang": "en"}, {"id": "eledc", "t": "soc", "q": "Wofür steht LEDC?", "a": "Less economically developed country", "g": "dev", "hl": 2, "z": "Auf Deutsch etwa: wirtschaftlich weniger entwickeltes Land.", "mc": {"o": ["Less economically developed country", "Least educated developing country", "Low energy developed country", "Less effectively democratic country"]}, "ok": ["less economically developed country|less economically developed countries"], "lang": "en"}, {"id": "enic", "t": "soc", "q": "Wofür steht NIC?", "a": "Newly industrialised country", "g": "dev", "hl": 1, "z": "Auf Deutsch: Schwellenland.", "mc": {"o": ["Newly industrialised country", "Not industrialised country", "Nearly independent country", "New international community"]}, "ok": ["newly industrialised country|newly industrialised countries"], "lang": "en"}, {"id": "emedc", "t": "soc", "q": "Wofür steht MEDC?", "a": "More economically developed country", "g": "dev", "hl": 0, "z": "Auf Deutsch etwa: wirtschaftlich stärker entwickeltes Land.", "mc": {"o": ["More economically developed country", "Most educated developed country", "Medium economically developed country", "More equally distributed country"]}, "ok": ["more economically developed country|more economically developed countries"], "lang": "en"}, {"id": "eabbr", "t": "soc", "q": "Welche Abkürzung passt: „newly industrialised country“?", "a": "NIC", "g": "dev", "hl": 1, "mc": {"o": ["NIC", "LEDC", "MEDC", "RNI"]}, "ok": ["NIC"], "lang": "en"}, {"id": "crni", "t": "pop", "q": "Birth rate: 30 per 1000, death rate: 10 per 1000. How big is the RNI in per cent?", "a": "RNI = 2 %", "num": {"v": 2, "u": "%"}, "s": ["30 − 10 = 20 per 1000", "20 per 1000 = 2 per 100", "RNI = 2 %"], "z": "Rechenweg ergänzt (berechnet – bitte prüfen): RNI in % = (birth rate − death rate) : 10.", "g": "growth", "hl": 1}, {"id": "cgro", "t": "pop", "q": "RNI = 2 %, immigration = 0,5 %, emigration = 0,3 %. Population growth in per cent?", "a": "2,2 %", "num": {"v": 2.2, "u": "%"}, "s": ["Formel vom Blatt: growth = RNI + immigration − emigration", "2 + 0,5 − 0,3 = 2,2", "Population growth = 2,2 %"], "z": "Zahlenbeispiel ergänzt (berechnet – bitte prüfen).", "g": "growth", "hl": 4}, {"id": "cden", "t": "dist", "q": "3000 people live on 10 km². What is the population density?", "a": "300 people per km²", "num": {"v": 300, "u": "people per km²"}, "s": ["density = people : area", "3000 : 10 = 300", "300 people per km²"], "z": "Formel ergänzt (berechnet – bitte prüfen); 300 ist das Beispiel vom Blatt."}, {"id": "xp1", "t": "pop", "q": "Fill in the gap: In many LEDCs the ___ rate is high: many babies are born per 1000 people.", "a": "birth", "ok": ["birth"], "lang": "en", "add": true, "x": "In many LEDCs the birth rate is high: many babies are born per 1000 people. – In vielen LEDCs ist die Geburtenrate hoch.", "h": ["Beginnt mit „bi…“"]}, {"id": "xp2", "t": "pop", "q": "Fill in the gap: Better health care means people live longer, so life ___ goes up.", "a": "expectancy", "ok": ["expectancy"], "lang": "en", "add": true, "x": "Better health care means people live longer, so life expectancy goes up. – Bessere Gesundheitsversorgung → die Lebenserwartung steigt.", "h": ["Beginnt mit „ex…“"]}, {"id": "xp3", "t": "pop", "q": "Fill in the gap: The ___ capacity is the number of people the Earth can support.", "a": "carrying", "ok": ["carrying"], "lang": "en", "add": true, "x": "The carrying capacity is the number of people the Earth can support. – Tragfähigkeit der Erde.", "h": ["Beginnt mit „ca…“"]}, {"id": "xp4", "t": "pop", "q": "Fill in the gap: In Germany the population is ___: there are more and more old people.", "a": "ageing", "ok": ["ageing"], "lang": "en", "add": true, "x": "In Germany the population is ageing: there are more and more old people. – Die Bevölkerung überaltert.", "h": ["Beginnt mit „ag…“"]}, {"id": "xp5", "t": "pop", "q": "Fill in the gap: There are more births than deaths, so the population does not decrease, it ___.", "a": "increases", "ok": ["increases|grows|is increasing|is growing"], "lang": "en", "add": true, "x": "There are more births than deaths, so the population does not decrease, it increases. – Die Bevölkerung nimmt zu.", "h": ["Beginnt mit „in…“"]}, {"id": "xd1", "t": "dist", "q": "Fill in the gap: Only a few people live in the desert. It is ___ populated.", "a": "sparsely", "ok": ["sparsely"], "lang": "en", "add": true, "x": "Only a few people live in the desert. It is sparsely populated. – Die Wüste ist wenig besiedelt.", "h": ["Beginnt mit „sp…“"]}, {"id": "xd2", "t": "dist", "q": "Fill in the gap: Tokyo is very ___ populated: thousands of people live on one km².", "a": "densely", "ok": ["densely"], "lang": "en", "add": true, "x": "Tokyo is very densely populated: thousands of people live on one km². – Tokio ist dicht besiedelt.", "h": ["Beginnt mit „de…“"]}, {"id": "xd3", "t": "dist", "q": "Fill in the gap: Many slum ___ live in marginalised settlements at the edge of the city.", "a": "dwellers", "ok": ["dwellers|dweller"], "lang": "en", "add": true, "x": "Many slum dwellers live in marginalised settlements at the edge of the city. – Slumbewohner leben in Marginalsiedlungen am Stadtrand.", "h": ["Beginnt mit „dw…“"]}, {"id": "xl1", "t": "life", "q": "Fill in the gap: There is a ___ of clean water in many slums.", "a": "lack", "ok": ["lack"], "lang": "en", "add": true, "x": "There is a lack of clean water in many slums. – Es gibt einen Mangel an sauberem Wasser.", "h": ["Beginnt mit „la…“"]}, {"id": "xl2", "t": "life", "q": "Fill in the gap: After the drought there was a terrible ___: people had nothing to eat.", "a": "famine", "ok": ["famine"], "lang": "en", "add": true, "x": "After the drought there was a terrible famine: people had nothing to eat. – Nach der Dürre gab es eine Hungersnot.", "h": ["Beginnt mit „fa…“"]}, {"id": "xl3", "t": "life", "q": "Fill in the gap: People who cannot read or write are ___.", "a": "illiterate", "ok": ["illiterate"], "lang": "en", "add": true, "x": "People who cannot read or write are illiterate. – Wer nicht lesen und schreiben kann, ist Analphabet.", "h": ["Beginnt mit „il…“"]}, {"id": "xl4", "t": "life", "q": "Fill in the gap: Children who do not get enough healthy food suffer from ___.", "a": "malnutrition", "ok": ["malnutrition"], "lang": "en", "add": true, "x": "Children who do not get enough healthy food suffer from malnutrition. – Kinder ohne genug gesundes Essen leiden an Fehlernährung.", "h": ["Beginnt mit „ma…“"]}, {"id": "xs1", "t": "soc", "q": "Fill in the gap: Rich and poor people live in different parts of the city. This is called spatial ___.", "a": "segregation", "ok": ["segregation|spatial segregation"], "lang": "en", "add": true, "x": "Rich and poor people live in different parts of the city. This is called spatial segregation. – Räumliche Trennung von Arm und Reich.", "h": ["Beginnt mit „se…“"]}, {"id": "xs2", "t": "soc", "q": "Fill in the gap: A country that is quickly building up its industry is a newly ___ country (NIC).", "a": "industrialised", "ok": ["industrialised"], "lang": "en", "add": true, "x": "A country that is quickly building up its industry is a newly industrialised country (NIC). – NIC = Schwellenland.", "h": ["Beginnt mit „in…“"]}], "match": [{"n": "Abkürzung ↔ Bedeutung", "p": [["LEDC", "less economically developed country"], ["NIC", "newly industrialised country"], ["MEDC", "more economically developed country"], ["RNI", "rate of natural increase"]]}, {"n": "Gegensätze", "p": [["rural", "urban"], ["to increase", "to decrease"], ["overpopulation", "underpopulation"], ["birth rate", "death rate"], ["sparsely populated", "densely populated"]]}, {"n": "Lebensbedingungen EN ↔ DE", "p": [["famine", "Hungersnot"], ["malnutrition", "Fehlernährung"], ["illiteracy", "Analphabetismus"], ["sanitation", "sanitäre Anlagen"], ["poverty", "Armut"], ["retirement", "Rente"]]}, {"n": "Menschen EN ↔ DE", "p": [["inhabitant", "Einwohner"], ["citizen", "Bürger"], ["(slum) dweller", "(Slum-)Bewohner"], ["foreigner", "Ausländer"], ["tribe", "Stamm"], ["indigenous people", "Ureinwohner"]]}, {"n": "Bevölkerung EN ↔ DE", "p": [["life expectancy", "Lebenserwartung"], ["carrying capacity", "Tragfähigkeit"], ["population density", "Bevölkerungsdichte"], ["spatial segregation", "räumliche Trennung"], ["living space", "Wohnraum"], ["a surplus of", "ein Überschuss an"]]}], "exam": [{"t": "pop", "q": "Übersetze ins Englische: Lebenserwartung, Geburtenrate, Hungersnot, Analphabetismus, Ureinwohner, räumliche Trennung.", "p": ["life expectancy", "birth rate", "famine", "illiteracy", "indigenous people / natives", "spatial segregation"]}, {"t": "dist", "q": "Translate into German: carrying capacity, sanitation, marginalised settlements, a surplus of, to expand, living space.", "p": ["Tragfähigkeit (der Erde)", "sanitäre Anlagen", "Marginalsiedlungen (Slums)", "ein Überschuss an", "sich ausdehnen", "Wohnraum"]}, {"t": "soc", "q": "What do LEDC, NIC and MEDC stand for? Write the full terms.", "p": ["Less economically developed country", "Newly industrialised country", "More economically developed country"]}, {"t": "pop", "q": "Explain in English: What is the rate of natural increase (RNI), and how do you calculate population growth?", "p": ["RNI = natural increase (birth rate minus death rate) in per cent", "population growth = RNI + immigration − emigration", "correct example with numbers"]}, {"t": "life", "q": "Describe living conditions in a marginalised settlement in English. Use at least five words from the list.", "p": ["poverty / the poor", "there is a lack of … (sanitation, education)", "malnutrition or famine", "illiteracy", "(slum) dwellers / overcrowded", "complete, correct sentences"]}, {"t": "dist", "q": "Explain the differences: sparsely vs. densely populated, rural vs. urban, overpopulation vs. underpopulation.", "p": ["sparsely = few people, densely = many people per km²", "rural = countryside / village, urban = city", "overpopulation = too many people (overcrowded), underpopulation = too few"]}], "kind": "vocab"}</script>
+<!-- @@LK-DECKS-END@@ -->
+<script>
+{
+/* ===================== STAPEL (aus den Mitschriften vom 21. und 23.11.2026) =====================
+   Felder: id, t (Thema), q (Frage), a (Antwort laut Mitschrift), x (Erklärung), z (Zusatzwissen, nicht in der Mitschrift),
+   w (Denk-weiter-Frage), h (Hinweise), mc {q?, o:[richtig, falsch, falsch, falsch]}, g (Grafik), hl (hervorgehobenes Element) */
+/* Stapel stehen als JSON-Blöcke <script type="application/json" class="lk-deck"> vor diesem Skript. */
+
+/* ===================== Speicher ===================== */
+/* ===================== Version ===================== */
+const APP_VERSION="4.0", APP_DATE="2026-11-26";
+const APP_NEWS=["Englisch ist jetzt ein Vokabeltest-Stapel: Du tippst die Antwort ein und die App prüft selbst.","Neuer Modus „Vokabeltest“: Wörter am Stück tippen, am Ende Punkte und Fehlerliste.","Neu: Lückensätze zum Üben (Zusatz, nicht vom Lehrer)."];
+const KEY="lernkiste-v1", DKEY="lernkiste-decks";
+let storeOK=true;const warns=[];
+try{localStorage.setItem("lk-probe","1");localStorage.removeItem("lk-probe")}catch(e){storeOK=false}
+const store={
+  raw(k){try{return localStorage.getItem(k)}catch(e){storeOK=false;return null}},
+  get(k){const r=this.raw(k);if(r==null)return null;try{return JSON.parse(r)}catch(e){try{localStorage.setItem(k+"-defekt-"+Date.now(),r)}catch(e2){}warns.push("Gespeicherte Daten waren beschädigt und konnten nicht gelesen werden. Eine Kopie wurde aufgehoben.");return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));storeOK=true;return true}catch(e){storeOK=false;return false}}
+};
+/* Prüft einen Stapel vollständig. Rückgabe: Liste verständlicher Fehler (leer = gültig). */
+function deckErrors(d){
+  const E=[],str=x=>typeof x==="string"&&x.trim()!=="";
+  if(!d||typeof d!=="object"||Array.isArray(d))return["Die Datei enthält keinen Lernstapel."];
+  if(!str(d.id)||!/^[a-z0-9-]{3,60}$/.test(d.id))E.push("Stapel-id fehlt oder ist ungültig.");
+  if(!str(d.title))E.push("Titel fehlt.");
+  if(d.kind!=null&&d.kind!=="vocab")E.push("Prüfungsart (kind) ist unbekannt.");
+  if(d.examDate!=null&&d.examDate!==""&&!/^\d{4}-\d{2}-\d{2}$/.test(d.examDate))E.push("Datum der Arbeit hat ein falsches Format.");
+  const T=Array.isArray(d.topics)?d.topics:[],tids=T.map(t=>t&&t.id);
+  if(!T.length)E.push("Themen fehlen.");
+  if(new Set(tids).size!==tids.length)E.push("Themen-ids sind doppelt.");
+  T.forEach((t,i)=>{if(!t||!str(t.id)||!str(t.n))E.push(`Thema ${i+1}: id oder Name fehlt.`);else if(t.c!=null&&!/^#[0-9a-fA-F]{6}$/.test(t.c))E.push(`Thema „${t.n}“: Farbe ungültig.`)});
+  const G=d.graphics==null?{}:d.graphics;
+  if(typeof G!=="object"||Array.isArray(G))E.push("Grafiken haben ein falsches Format.");
+  else Object.keys(G).forEach(k=>{const g=G[k],it=g&&g.items,pair=g&&(g.k==="timeline"||g.k==="list");
+    if(!g||!["wheel","pyramid","steps","timeline","list"].includes(g.k)||!Array.isArray(it)||!it.length)E.push(`Grafik „${k}“ ist ungültig.`);
+    else if(pair&&!it.every(x=>Array.isArray(x)&&x.length===2&&x.every(y=>typeof y==="string")))E.push(`Grafik „${k}“: Einträge müssen Paare sein.`);
+    else if(!pair&&!it.every(x=>typeof x==="string"))E.push(`Grafik „${k}“: Einträge müssen Texte sein.`)});
+  const C=Array.isArray(d.cards)?d.cards:[],ids=new Set();
+  if(!C.length)E.push("Der Stapel enthält keine Karten.");
+  C.forEach((c,i)=>{const n="Karte "+(c&&str(c.id)?c.id:i+1);
+    if(!c||typeof c!=="object"){E.push(n+": ungültig.");return}
+    if(!str(c.id))E.push(n+": id fehlt.");else if(ids.has(c.id))E.push(n+": id doppelt.");else ids.add(c.id);
+    if(!tids.includes(c.t))E.push(n+": Thema unbekannt.");
+    if(!str(c.q)||!str(c.a))E.push(n+": Frage oder Antwort fehlt.");
+    ["x","z","w"].forEach(k=>{if(c[k]!=null&&typeof c[k]!=="string")E.push(`${n}: ${k} muss Text sein.`)});
+    ["h","s"].forEach(k=>{if(c[k]!=null&&!(Array.isArray(c[k])&&c[k].every(x=>typeof x==="string")))E.push(`${n}: ${k} muss eine Liste von Texten sein.`)});
+    if(c.mc!=null){const o=c.mc&&c.mc.o;if(!Array.isArray(o)||o.length<2||!o.every(str)||new Set(o).size!==o.length)E.push(n+": Quiz braucht mindestens 2 verschiedene Antworten.");else if((c.mc.q!=null&&typeof c.mc.q!=="string")||(c.mc.x!=null&&typeof c.mc.x!=="string"))E.push(n+": Quiztext ungültig.")}
+    if(c.num!=null){if(typeof c.num!=="object"||typeof c.num.v!=="number"||!isFinite(c.num.v))E.push(n+": Rechenwert ungültig.");else if(c.num.tol!=null&&!(typeof c.num.tol==="number"&&c.num.tol>=0&&c.num.tol<1))E.push(n+": Toleranz ungültig.")}
+    if(c.ok!=null){if(!Array.isArray(c.ok)||!c.ok.length||!c.ok.every(str))E.push(n+": gültige Antworten (ok) müssen eine Liste von Texten sein.");else if(c.need!=null&&!(Number.isInteger(c.need)&&c.need>=1&&c.need<=c.ok.length))E.push(n+": need passt nicht zur Zahl der Antworten.")}
+    if(c.all!=null&&!(Array.isArray(c.all)&&c.all.every(str)))E.push(n+": all muss eine Liste von Texten sein.");
+    if(c.lang!=null&&!["en","de"].includes(c.lang))E.push(n+": Sprache (lang) muss en oder de sein.");
+    if(c.g!=null){const g=typeof G==="object"&&G?G[c.g]:null;if(!g)E.push(`${n}: Grafik „${c.g}“ fehlt.`);else if(c.hl!=null&&!(Number.isInteger(c.hl)&&c.hl>=0&&Array.isArray(g.items)&&c.hl<g.items.length))E.push(n+": Markierung außerhalb der Grafik.")}
+  });
+  if(d.match!=null){if(!Array.isArray(d.match))E.push("Zuordnen hat ein falsches Format.");else d.match.forEach((m,i)=>{const p=m&&m.p;if(!m||!str(m.n)||!Array.isArray(p)||p.length<2||!p.every(x=>Array.isArray(x)&&x.length===2&&x.every(str)))E.push(`Zuordnen ${i+1}: ungültig.`);else if(new Set(p.map(x=>x[0])).size!==p.length||new Set(p.map(x=>x[1])).size!==p.length)E.push(`Zuordnen „${m.n}“: Paare nicht eindeutig.`)})}
+  if(d.exam!=null){if(!Array.isArray(d.exam))E.push("Probeklausur hat ein falsches Format.");else d.exam.forEach((x,i)=>{if(!x||!tids.includes(x.t)||!str(x.q)||!Array.isArray(x.p)||!x.p.length||!x.p.every(str))E.push(`Probeklausur-Aufgabe ${i+1}: ungültig.`)})}
+  return E;
+}
+function normDeck(d){d.graphics=d.graphics||{};d.match=d.match||[];d.exam=d.exam||[];d.topics.forEach(t=>{if(!t.c)t.c="#2f4fd1"});return d}
+const DECKS=[...document.querySelectorAll("script.lk-deck")].map(el=>{try{return JSON.parse(el.textContent)}catch(e){return null}}).filter(d=>!deckErrors(d).length).map(normDeck);
+const S0=()=>({points:0,days:[],tro:{},p:{},set:{tts:false,rate:1},deck:null,filter:[],stats:{ok:0,calib:0}});
+const S=Object.assign(S0(),store.get(KEY)||{});
+function fixState(){S.stats=Object.assign({ok:0,calib:0},S.stats);S.set=Object.assign({tts:false,rate:1},S.set);if(S.set.v!==2){S.set.tts=false;S.set.v=2}if(!S.p||typeof S.p!=="object")S.p={};if(!Array.isArray(S.days))S.days=[];if(!S.tro||typeof S.tro!=="object")S.tro={}}
+fixState();
+let decks=[],decksBad=[];
+function loadDecks(list){decks=[];decksBad=[];(Array.isArray(list)?list:[]).forEach(d=>{if(!deckErrors(d).length&&!DECKS.some(b=>b.id===d.id))decks.push(normDeck(d));else decksBad.push(d)});if(decksBad.length)warns.push(decksBad.length===1?"Ein eigener Stapel war beschädigt oder doppelt und wurde ausgeblendet.":decksBad.length+" eigene Stapel waren beschädigt oder doppelt und wurden ausgeblendet.")}
+loadDecks(store.get(DKEY));
+const allDecks=()=>[...DECKS,...decks];
+function pickDefault(){const t=new Date(),now=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");const up=allDecks().filter(d=>d.examDate&&d.examDate>=now).sort((a,b)=>a.examDate<b.examDate?-1:1);return up[0]||allDecks()[allDecks().length-1]}
+let D=allDecks().find(d=>d.id===S.deck)||pickDefault();
+if(!D){document.getElementById("view").innerHTML='<p style="padding:20px">Kein Lernstapel gefunden.</p>';throw new Error("no deck")}
+const save=()=>store.set(KEY,S);
+const P=()=>S.p[D.id]||(S.p[D.id]={c:{},tests:[],exam:null});
+const ck=id=>P().c[id]||{lv:0,n:0,due:0,ok:0,bad:0,over:0};
+const cs=id=>P().c[id]||(P().c[id]={lv:0,n:0,due:0,ok:0,bad:0,over:0});
+
+/* ===================== Helfer ===================== */
+const $=s=>document.querySelector(s), V=$("#view");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=s=>esc(s).replace(/\^\{([^}]*)\}/g,"<sup>$1</sup>").replace(/_\{([^}]*)\}/g,"<sub>$1</sub>");
+const plain=s=>String(s==null?"":s).replace(/\^\{([^}]*)\}/g," hoch $1").replace(/_\{([^}]*)\}/g,"$1");
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const pad=n=>String(n).padStart(2,"0");
+const dayStr=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today=()=>dayStr(new Date());
+const topic=id=>D.topics.find(t=>t.id===id)||{id,n:id,c:"#2f4fd1"};
+const byId=id=>D.cards.find(c=>c.id===id);
+function roundRobin(list){const g={},order=[];list.forEach(c=>{if(!g[c.t]){g[c.t]=[];order.push(c.t)}g[c.t].push(c)});const out=[];let more=true;while(more){more=false;order.forEach(t=>{if(g[t].length){out.push(g[t].shift());more=true}})}return out}
+function activeFilter(){return (S.filter||[]).filter(id=>D.topics.some(t=>t.id===id))}
+function filtered(){const f=activeFilter();return f.length?D.cards.filter(c=>f.includes(c.t)):D.cards}
+function markDay(){const t=today();if(!S.days.includes(t)){S.days.push(t);save()}}
+function streak(){const set=new Set(S.days);const d=new Date();if(!set.has(dayStr(d)))d.setDate(d.getDate()-1);let n=0;while(set.has(dayStr(d))){n++;d.setDate(d.getDate()-1)}return n}
+function examMode(){const p=P();return p.examMode||(p.exam?"own":"deck")}
+function examDate(){const m=examMode();return m==="none"?"":m==="own"?(P().exam||""):(D.examDate||"")}
+const deDate=s=>s?s.split("-").reverse().join("."):"";
+function examTime(){const e=examDate();return e?new Date(e+"T08:00").getTime():0}
+function examInfo(){const e=examDate();if(!e)return"";const a=new Date(e+"T00:00"),b=new Date(today()+"T00:00");const d=Math.round((a-b)/864e5);if(d<0)return"";return d===0?"Arbeit heute":d===1?"Arbeit morgen":"Arbeit in "+d+" Tagen"}
+function ivl(lv){const m=[1,5,30,240,1440,4320,10080][Math.min(lv,6)];const ex=examTime(),now=Date.now();if(ex>now){return Math.min(m,Math.max(5,(ex-now)/120000))}return m}
+function stats(cards){const n=cards.length,now=Date.now();let sum=0,mast=0,due=0,seen=0;cards.forEach(c=>{const k=ck(c.id);sum+=Math.min(k.lv,4)/4;if(k.lv>=3)mast++;if(k.n>0){seen++;if(k.due<=now)due++}});return{n,mast,due,seen,pct:n?Math.round(sum/n*100):0,mastPct:n?Math.round(mast/n*100):0}}
+const pctTxt=s=>s.seen?s.pct+" %":"–";
+/* Tagesrunde und Fehler-Revanche */
+function nextDay(){const t=new Date();t.setHours(24,0,0,0);return t.getTime()}
+function fmtWhen(ts){const d=new Date(ts),a=new Date(ts),t0=new Date();a.setHours(0,0,0,0);t0.setHours(0,0,0,0);const day=Math.round((a-t0)/864e5),hm=pad(d.getHours())+":"+pad(d.getMinutes());return day<=0?"heute um "+hm:day===1?"morgen um "+hm:"am "+pad(d.getDate())+"."+pad(d.getMonth()+1)+". um "+hm}
+function revCards(){const now=Date.now();return D.cards.filter(c=>{const r=ck(c.id).rev;return c.mc&&r&&r.due<=now})}
+function dueCards(){const now=Date.now();return D.cards.filter(c=>{const k=ck(c.id);return k.n>0&&k.due<=now}).sort((a,b)=>ck(a.id).due-ck(b.id).due)}
+function nextDue(){const now=Date.now();let m=Infinity;D.cards.forEach(c=>{const k=ck(c.id);if(k.n>0&&k.due>now)m=Math.min(m,k.due);if(k.rev&&k.rev.due>now)m=Math.min(m,k.rev.due)});return m===Infinity?0:m}
+function nextDueTxt(){const n=nextDue();return n?"Nächste Übung: "+fmtWhen(n):"Noch keine Wiederholung geplant"}
+function mascot(p){return p<25?"🐣":p<50?"🐥":p<75?"🦊":p<100?"🦉":"🦄"}
+let tT=null;
+function toast(t){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.style.display="block";clearTimeout(tT);tT=setTimeout(()=>{el.style.display="none"},2600)}
+function speak(t){try{const ss=window.speechSynthesis;if(!ss){toast("Vorlesen geht auf diesem Gerät nicht");return}ss.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="de-DE";const vs=ss.getVoices().filter(v=>v.lang&&v.lang.toLowerCase().startsWith("de"));const pv=vs.find(v=>/Anna|Helena|Petra|Marlene|Google/i.test(v.name))||vs[0];if(pv)u.voice=pv;u.rate=S.set.rate||1;ss.speak(u)}catch(e){toast("Vorlesen geht hier gerade nicht")}}
+function hush(){try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}}
+
+/* ===================== Grafiken ===================== */
+function gfx(c){
+  const g=c.g&&D.graphics&&D.graphics[c.g];if(!g)return"";const hl=c.hl;
+  if(g.k==="wheel"){
+    const n=g.items.length,cx=170,cy=118,rx=112,ry=86;
+    const pts=g.items.map((t,i)=>{const a=(-90+i*360/n)*Math.PI/180;return[cx+rx*Math.cos(a),cy+ry*Math.sin(a),t,i]});
+    const lines=pts.map(p=>`<line x1="${cx}" y1="${cy}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="var(--line)" stroke-width="2"/>`).join("");
+    const boxes=pts.map(p=>{const on=p[3]===hl;return`<rect x="${(p[0]-54).toFixed(1)}" y="${(p[1]-15).toFixed(1)}" width="108" height="30" rx="15" fill="${on?"var(--orange)":"var(--soft)"}" stroke="${on?"var(--orange)":"var(--line)"}"/><text x="${p[0].toFixed(1)}" y="${(p[1]+4.5).toFixed(1)}" text-anchor="middle" font-size="12.5" fill="${on?"#fff":"var(--ink)"}">${esc(p[2])}</text>`}).join("");
+    return`<div class="gx"><svg viewBox="0 0 340 236" role="img" aria-label="${esc(g.c)}: ${esc(g.items.join(", "))}">${lines}<circle cx="${cx}" cy="${cy}" r="50" fill="var(--coral)"/><text x="${cx}" y="${cy+4.5}" text-anchor="middle" font-size="12.5" fill="#fff">${esc(g.c)}</text>${boxes}</svg></div>`;
+  }
+  if(g.k==="pyramid"){
+    const n=g.items.length,top=8,H=210,bh=(H-top-8)/n,gap=4,w=y=>56+(y-top)/(H-top)*270;
+    const bands=g.items.map((t,i)=>{const y0=top+i*bh,y1=y0+bh-gap,a=w(y0),b=w(y1),on=hl===i||hl==null;const f=hl==null?["var(--coral)","#f2911b","#8b5cf6","var(--blue)"][i%4]:(on?"var(--orange)":"var(--soft)");
+      return`<polygon points="${170-a/2},${y0} ${170+a/2},${y0} ${170+b/2},${y1} ${170-b/2},${y1}" fill="${f}" stroke="var(--line)"/><text x="170" y="${(y0+y1)/2+4.5}" text-anchor="middle" font-size="13" fill="${hl==null||on?"#fff":"var(--ink)"}">${esc(t)}</text>`}).join("");
+    return`<div class="gx"><svg viewBox="0 0 340 ${H}" role="img" aria-label="Schichten: ${esc(g.items.join(", "))}">${bands}</svg></div>`;
+  }
+  if(g.k==="steps")return`<div class="gx steps">${g.items.map((t,i)=>`${i?'<span class="ar">→</span>':""}<span class="st${i===hl?" hl":""}">${fmt(t)}</span>`).join("")}</div>`;
+  if(g.k==="timeline")return`<div class="gx">${g.items.map((r,i)=>`<div class="tlr${i===hl?" hl":""}"><span class="y">${fmt(r[0])}</span><span class="d"></span><span>${fmt(r[1])}</span></div>`).join("")}</div>`;
+  if(g.k==="list")return`<div class="gx lst">${g.items.map((r,i)=>`<b class="${i===hl?"hl":""}">${fmt(r[0])}</b><span class="${i===hl?"hl":""}">${fmt(r[1])}</span>`).join("")}</div>`;
+  return"";
+}
+
+/* ===================== Trophäen ===================== */
+const TRO=[
+  {id:"start",e:"🐣",n:"Küken",d:"Erste Karte gelernt",f:()=>D.cards.some(c=>ck(c.id).n>0)},
+  {id:"fox",e:"🦊",n:"Fuchs",d:"10 Karten gewusst",f:()=>S.stats.ok>=10},
+  {id:"turtle",e:"🐢",n:"Schildkröte",d:"100 Punkte gesammelt",f:()=>S.points>=100},
+  {id:"owl",e:"🦉",n:"Eule",d:"Quiz ohne Fehler (ab 5 Fragen)",f:()=>!!S.stats.qp},
+  {id:"bee",e:"🐝",n:"Biene",d:"Zuordnen ohne Fehler",f:()=>!!S.stats.mp},
+  {id:"koala",e:"🐨",n:"Koala",d:"10-mal dich richtig eingeschätzt",f:()=>S.stats.calib>=10},
+  {id:"octo",e:"🐙",n:"Krake",d:"Alle Themen geübt",f:()=>D.topics.every(t=>D.cards.some(c=>c.t===t.id&&ck(c.id).n>0))},
+  {id:"peng",e:"🐧",n:"Pinguin",d:"Probeklausur oder Vokabeltest mit mindestens 50 % bestanden",f:()=>!!S.stats.exPass},
+  {id:"fly",e:"🦋",n:"Schmetterling",d:"Lernstand-Test mit 80 % oder mehr",f:()=>!!S.stats.t80},
+  {id:"dolph",e:"🐬",n:"Delfin",d:"Die Hälfte sicher gelernt",f:()=>stats(D.cards).mastPct>=50},
+  {id:"panda",e:"🐼",n:"Panda",d:"3 Lerntage in Folge",f:()=>streak()>=3},
+  {id:"lion",e:"🦁",n:"Löwe",d:"500 Punkte gesammelt",f:()=>S.points>=500},
+  {id:"dragon",e:"🐲",n:"Drache",d:"5 Fehler-Revanchen gewonnen",f:()=>(S.stats.rev||0)>=5},
+  {id:"uni",e:"🦄",n:"Einhorn",d:"Alle Karten sicher gelernt",f:()=>stats(D.cards).mastPct>=100}
+];
+let troQ=[];
+function checkTro(){TRO.forEach(t=>{if(!S.tro[t.id]&&t.f()){S.tro[t.id]=today();troQ.push(t)}});save();showTro()}
+let lastFocus=null;
+function showTro(){if($(".modal")||!troQ.length)return;const t=troQ.shift();if(!lastFocus)lastFocus=document.activeElement;const m=document.createElement("div");m.className="modal";m.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="troT" aria-describedby="troD"><div class="e" aria-hidden="true">${t.e}</div><div class="h" id="troT">Neue Trophäe: ${esc(t.n)}</div><p class="sub" id="troD">${esc(t.d)}</p><button class="btn" data-act="closemodal" style="width:100%">Juhu!</button></div>`;document.body.appendChild(m);$("#app").setAttribute("aria-hidden","true");const b=m.querySelector("button");if(b)b.focus()}
+function closeTro(){const m=$(".modal");if(m)m.remove();$("#app").removeAttribute("aria-hidden");if(troQ.length)return showTro();const f=lastFocus;lastFocus=null;if(f&&document.contains(f)&&f!==document.body)f.focus();else focusView()}
+function focusView(){const h=V.querySelector("h2")||V;if(!h.hasAttribute("tabindex"))h.setAttribute("tabindex","-1");h.focus()}
+
+/* ===================== Ansichten ===================== */
+let cur="home",L=null,Q=null,M=null,E=null,T=null,report="";
+const ICON={
+  learn:'<svg viewBox="0 0 32 32"><rect x="4" y="8" width="20" height="15" rx="3" fill="#e8664d"/><rect x="8" y="5" width="20" height="15" rx="3" fill="#f2911b"/><path d="M12 11h12M12 15h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+  quiz:'<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#2f4fd1"/><path d="M10 16l4 4 8-9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  match:'<svg viewBox="0 0 32 32"><rect x="3" y="6" width="10" height="8" rx="2" fill="#8b5cf6"/><rect x="19" y="18" width="10" height="8" rx="2" fill="#0e9aa7"/><path d="M13 10c6 0 0 12 6 12" stroke="#8b5cf6" stroke-width="2.5" fill="none"/></svg>',
+  exam:'<svg viewBox="0 0 32 32"><rect x="7" y="3" width="18" height="26" rx="3" fill="#0e9aa7"/><path d="M11 10h10M11 15h10M11 20h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+  vtest:'<svg viewBox="0 0 32 32"><rect x="7" y="3" width="18" height="26" rx="3" fill="#0e9aa7"/><path d="M11 10h10M11 15h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M11 21l3 3 6-6" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  test:'<svg viewBox="0 0 32 32"><rect x="4" y="18" width="6" height="10" rx="1.5" fill="#f2911b"/><rect x="13" y="11" width="6" height="17" rx="1.5" fill="#e8664d"/><rect x="22" y="5" width="6" height="23" rx="1.5" fill="#2f4fd1"/></svg>'
+};
+function pills(){$("#pills").innerHTML=`<span class="pill" title="Lerntage in Folge"><svg viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 3 3 3 0-3-1-5 0-8z" fill="#f2911b"/></svg>${streak()} ${streak()===1?"Tag":"Tage"}</span><span class="pill" title="Punkte"><svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .6-5.3 4.7L18.4 22 12 18l-6.4 4 1.7-7.7L2 9.6 9 9z" fill="#e8664d"/></svg>${S.points}</span>`}
+
+function home(){
+  const st=stats(D.cards),ex=examInfo(),f=activeFilter();
+  const tagBtns=`<button class="tag${f.length?"":" on"}" aria-pressed="${!f.length}" data-act="tag" data-v="">Alle (${D.cards.length})</button>`+D.topics.map(t=>{const cs2=D.cards.filter(c=>c.t===t.id);return`<button class="tag${f.includes(t.id)?" on":""}" aria-pressed="${f.includes(t.id)}" data-act="tag" data-v="${esc(t.id)}" style="--c:${esc(t.c)}"><i></i>${esc(t.n)} · ${pctTxt(stats(cs2))}</button>`}).join("");
+  const mode=(id,title,txt,rec)=>`<button class="mode${rec?" rec":""}" data-act="${id}">${ICON[id]}${rec?"<em>Empfohlen</em>":""}<b>${title}</b><span>${txt}</span></button>`;
+  const dk=allDecks(),rc=revCards().length,dc=dueCards().length,todo=Math.min(rc+dc,20);
+  const daily=`<button class="daily" data-act="daily"><span class="dt">Tagesrunde</span><span class="ds">${todo?`${dc} ${dc===1?"Karte":"Karten"} fällig${rc?` · ${rc} Fehler-Revanche${rc===1?"":"n"}`:""} · ca. ${Math.max(1,Math.round(todo*0.5))} Min`:st.seen?"Heute alles erledigt ✓ · "+nextDueTxt():"Starte mit den Karteikarten – danach findest du hier jeden Tag deine fälligen Karten."}</span></button>`;
+  V.innerHTML=`${dk.length>1?`<div class="tags decks">${dk.map(d=>`<button class="tag${d.id===D.id?" on":""}" aria-pressed="${d.id===D.id}" data-act="deck" data-v="${esc(d.id)}">${esc(d.subject||d.title)}</button>`).join("")}</div>`:""}
+  <section class="hero">
+    <div class="mascot" aria-hidden="true">${mascot(st.pct)}</div>
+    <div><div class="hk">${esc(D.title)}</div>
+      <div class="hb">${st.seen?st.pct+" % gelernt":"Los geht’s!"}</div>
+      <div class="bar" aria-label="Lernfortschritt ${st.pct} Prozent"><i style="width:${st.pct}%"></i></div>
+      <div class="hs">${st.seen?`${st.mast} von ${st.n} Karten sicher · ${st.due} fällig`:"Noch keine Einschätzung"}${ex?" · "+ex:""}</div></div>
+  </section>
+  ${daily}
+  <h2 class="h">Themen</h2>
+  <div class="tags">${tagBtns}</div>
+  <h2 class="h">Wie willst du lernen?</h2>
+  <div class="modes">
+    ${isVocab()?mode("learn","Karteikarten","Antwort eintippen – die App prüft selbst, auch die Schreibweise.",true):mode("learn","Karteikarten","Erst selbst antworten, dann umdrehen. Mit Vorlesen und Grafik.",true)}
+    ${mode("quiz","Quiz","10 Fragen mit Auswahl – gut zum Aufwärmen.")}
+    ${mode("match","Zuordnen","Paare finden: Ebene ↔ Motiv, Jahr ↔ Ereignis …")}
+    ${isVocab()?mode("vtest","Vokabeltest","Wörter am Stück tippen wie im Test – am Ende Punkte und Fehlerliste."):mode("exam","Probeklausur","Offene Aufgaben wie in der Arbeit, mit Erwartungshorizont.")}
+    ${mode("test","Lernstand-Test","12 gemischte Fragen. Ergebnis wird gespeichert.")}
+  </div>
+  <details class="sci"><summary>Warum diese Art zu lernen funktioniert</summary><ul class="ul">
+    <li><b>Abrufen statt Lesen:</b> Wer eine Antwort selbst aus dem Kopf holt, behält sie viel besser als beim Wiederlesen.</li>
+    <li><b>Verteilt wiederholen:</b> Gewusste Karten kommen später wieder, falsche gleich nochmal. Vor der Arbeit werden die Abstände kürzer.</li>
+    <li><b>Mischen:</b> Die Themen wechseln sich ab – so lernst du, sie auseinanderzuhalten.</li>
+    <li><b>Wort + Bild:</b> Jede Lösung zeigt eine Grafik, in der die Antwort markiert ist.</li>
+    <li><b>Selbsteinschätzung:</b> Vor dem Umdrehen sagst du, wie sicher du bist. So merkst du, wo du dich überschätzt.</li>
+    <li><b>Kurz und mit Schlaf:</b> 10–15 Minuten reichen. Für morgen: heute Abend eine Runde, morgen früh noch eine kurze – Schlaf dazwischen hilft beim Behalten.</li>
+  </ul></details>`;
+}
+
+/* ===================== Vokabelprüfung ===================== */
+/* Karten mit „ok“ in einem Stapel der Prüfungsart „vocab“ werden getippt und automatisch geprüft.
+   ok = Liste von Gruppen, je Gruppe mit „|“ getrennte gleichwertige Schreibweisen; need = wie viele Gruppen verlangt sind (Standard 1). */
+const isVocab=()=>D.kind==="vocab";
+const typedCard=c=>isVocab()&&Array.isArray(c.ok)&&c.ok.length>0;
+function vnorm(t){let x=String(t==null?"":t).normalize("NFC").toLowerCase();
+  x=x.replace(/[’‘`´]/g,"'").replace(/[“”„"«»]/g,"").replace(/…|\.\.\./g," ").replace(/−/g," minus ").replace(/\s[-–—]\s/g," minus ").replace(/\+/g," plus ").replace(/[–—]/g," ").replace(/-/g,"").replace(/[()]/g,"").replace(/[=?!]/g," ");
+  x=x.replace(/ß/g,"ss").replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/iz(?=[eai])/g,"is").replace(/ageing/g,"aging").replace(/per cent/g,"percent");
+  x=x.replace(/[.:]+(?=\s|$)/g," ").replace(/\s+/g," ").trim();
+  return x.replace(/^(to|a|an|the|der|die|das|ein|eine|einen)\s+(?=\S)/,"")}
+/* „(slum) dweller“ → mit und ohne Klammerinhalt */
+function vexpand(t){const m=/\(([^()]*)\)/.exec(t);if(!m)return[t];const a=t.slice(0,m.index),b=t.slice(m.index+m[0].length);return vexpand(a+m[1]+b).concat(vexpand(a+b))}
+function vvariants(g){const out=[];String(g).split("|").forEach(v=>vexpand(v).forEach(e=>{const n=vnorm(e);if(n&&!out.includes(n))out.push(n)}));return out}
+function vlev1(a,b){if(a===b)return false;const la=a.length,lb=b.length;if(Math.abs(la-lb)>1||Math.max(la,lb)<5)return false;let i=0;while(i<la&&i<lb&&a[i]===b[i])i++;
+  if(la===lb)return a.slice(i+1)===b.slice(i+1)||(a[i]===b[i+1]&&a[i+1]===b[i]&&a.slice(i+2)===b.slice(i+2));
+  return la>lb?a.slice(i+1)===b.slice(i):a.slice(i)===b.slice(i+1)}
+const vshow=g=>String(g).split("|")[0];
+/* Ergebnis: res „ok“ | „near“ (nur Schreibweise, zählt als falsch) | „no“; miss = fehlende Gruppen; fix = Korrekturen [getippt, richtig] */
+function vcheck(c,input){
+  const raw=String(input==null?"":input).trim(),need=c.need||1,groups=c.ok.map(vvariants),res=(r,o)=>Object.assign({res:r,typed:raw,miss:[],fix:[],empty:false},o);
+  if(!raw)return res("no",{empty:true,miss:c.ok.map(vshow)});
+  const whole=vnorm(raw),full=[];[c.a].concat(c.all||[]).forEach(a=>vvariants(a).forEach(v=>full.push(v)));
+  if(full.includes(whole))return res("ok");
+  if(need===1&&groups.some(g=>g.includes(whole)))return res("ok");
+  const parts=raw.split(/[\/,;\n]|\s+(?:and|und|or|oder)\s+/i).map(vnorm).filter(Boolean),hit=new Set(),nearHit=new Set(),fix=[];let bad=0;
+  parts.forEach(p=>{const order=groups.map((g,i)=>i).sort((a,b)=>(hit.has(a)||nearHit.has(a))-(hit.has(b)||nearHit.has(b)));
+    let gi=order.find(i=>groups[i].includes(p));if(gi!=null){hit.add(gi);nearHit.delete(gi);return}
+    gi=order.find(i=>groups[i].some(v=>vlev1(p,v)));if(gi!=null){if(!hit.has(gi)){nearHit.add(gi);fix.push([p,groups[gi].find(v=>vlev1(p,v))])}return}
+    bad++});
+  const miss=c.ok.filter((g,i)=>!hit.has(i)&&!nearHit.has(i)).map(vshow);
+  if(!bad&&hit.size>=need)return res("ok");
+  if(!bad&&hit.size+nearHit.size>=need)return res("near",{fix});
+  if(need===1){const all=full.concat(...groups),v=all.find(v=>vlev1(whole,v));if(v)return res("near",{fix:[[whole,v]]})}
+  return res("no",{miss:need===1?[]:miss,fix,found:c.ok.filter((g,i)=>hit.has(i)).map(vshow)});
+}
+const vinAttr=c=>`autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" lang="${c.lang==="de"?"de":"en"}" enterkeyhint="done"`;
+const vneedTxt=c=>(c.need||1)>1?`<p class="sub" style="margin:6px 0 0">Nenne ${c.need} Begriffe, mit Komma getrennt.</p>`:"";
+function vresBox(c,r){
+  if(r.res==="ok")return`<div class="zbox okb"><b>Richtig!</b>${r.typed?` Deine Antwort: ${esc(r.typed)}`:""}</div>`;
+  if(r.empty)return`<div class="zbox nob"><b>Keine Antwort.</b> Schau dir die Lösung an – die Karte kommt gleich nochmal.</div>`;
+  const mine=`<br>Deine Antwort: ${esc(r.typed)}`;
+  if(r.res==="near")return`<div class="zbox nob"><b>Fast richtig – achte auf die Schreibweise.</b> Im Test zählt das als Fehler.${mine}${r.fix.map(f=>`<br>„${esc(f[0])}“ → richtig: <b>${esc(f[1])}</b>`).join("")}</div>`;
+  return`<div class="zbox nob"><b>Leider nicht richtig.</b>${mine}${r.found&&r.found.length?`<br>Gefunden: ${r.found.map(esc).join(", ")}`:""}${r.miss.length?`<br>Es fehlt: <b>${r.miss.map(esc).join(", ")}</b>`:""}</div>`;
+}
+/* Vokabeltest: Wörter am Stück tippen, Rückmeldung erst am Ende. Nur Karten vom Blatt (ohne Zusatz). */
+const VDIR={en:"Deutsch → Englisch",de:"Englisch → Deutsch",mix:"Gemischt"};
+const vset=()=>Object.assign({n:20,dir:"en"},P().vset);
+function vpool(dir){const cs2=D.cards.filter(c=>typedCard(c)&&!c.add);if(dir!=="mix")return cs2.filter(c=>(c.lang||"en")===dir);
+  const by={};shuffle(cs2).forEach(c=>{const k=c.id.slice(1);if(!by[k])by[k]=c});return Object.values(by)}
+function startVtest(){T={stage:"setup"};go("vtest")}
+function runVtest(){const st=vset(),pool=shuffle(vpool(st.dir)),n=st.n?Math.min(st.n,pool.length):pool.length;if(!n){toast("Für diese Richtung gibt es keine Wörter");return}
+  T={stage:"run",dir:st.dir,i:0,items:pool.slice(0,n).map(c=>({id:c.id,typed:""})),saved:false};markDay();go("vtest")}
+function finishVtest(){if(T.saved)return;T.saved=true;const now=Date.now();let s=0;
+  T.items.forEach(it=>{const c=byId(it.id);it.r=vcheck(c,it.typed);if(it.r.res==="ok")s++;else{const k=cs(c.id);if(k.n>0)k.due=Math.min(k.due||Infinity,now)}});
+  T.rec={d:now,s,n:T.items.length,dir:T.dir,o:0};const p=P();(p.vtests||(p.vtests=[])).push(T.rec);if(p.vtests.length>30)p.vtests.shift();
+  S.points+=s*5;S.stats.ex=1;if(s/T.items.length*100>=PASS)S.stats.exPass=1;T.stage="end";save()}
+function vtest(){
+  if(!T||!isVocab()){T={stage:"setup"}}
+  if(T.stage==="setup"){const st=vset(),cnt={en:vpool("en").length,de:vpool("de").length,mix:vpool("mix").length},last=(P().vtests||[]).slice(-1)[0];
+    V.innerHTML=`<h2 class="h">Vokabeltest</h2><p class="sub">Wie im echten Test: Du tippst jedes Wort ein und siehst erst am Ende, was richtig war. Die Schreibweise zählt.</p>
+    <div class="card2"><b>Richtung</b><div class="row mt" role="group" aria-label="Richtung">${Object.keys(VDIR).map(k=>`<button class="btn sm ${st.dir===k?"":"ghost"}" aria-pressed="${st.dir===k}" data-act="vdir" data-v="${k}">${VDIR[k]} (${cnt[k]})</button>`).join("")}</div></div>
+    <div class="card2"><b>Anzahl</b><div class="row mt" role="group" aria-label="Anzahl">${[[10,"10 Wörter"],[20,"20 Wörter"],[0,"Alle"]].map(o=>`<button class="btn sm ${st.n===o[0]?"":"ghost"}" aria-pressed="${st.n===o[0]}" data-act="vnum" data-v="${o[0]}">${o[1]}</button>`).join("")}</div></div>
+    ${last?`<p class="sub">Letzter Vokabeltest: ${last.s} von ${last.n} richtig.</p>`:""}
+    <button class="btn mt" data-act="vrun" style="width:100%">Test starten</button>`;return}
+  if(T.stage==="run"){const it=T.items[T.i],c=byId(it.id),tp=topic(c.t),lastQ=T.i===T.items.length-1;
+    V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Test abbrechen">✕</button><div class="meter grow"><i style="width:${T.i/T.items.length*100}%;background:#0e9aa7"></i></div><span class="sub nowrap">${T.i+1} / ${T.items.length}</span></div>
+    <article class="kcard"><div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="badge" style="background:#0e9aa7">Vokabeltest</span></div>
+    <h2 class="q">${fmt(c.q)}</h2>${vneedTxt(c)}
+    <label for="tin" class="sub">Deine Antwort</label><input id="tin" class="vin" ${vinAttr(c)} value="${esc(it.typed)}" placeholder="${c.lang==="de"?"auf Deutsch …":"in English …"}">
+    <div class="row mt">${T.i?`<button class="btn ghost" data-act="tback">Zurück</button>`:""}<button class="btn" data-act="tnext" style="flex:1">${lastQ?"Abgeben":"Weiter"}</button></div>
+    <p class="sub mt">Leer lassen ist erlaubt – zählt als nicht gewusst.</p></article>`;const el=$("#tin");if(el)try{el.focus()}catch(e){}return}
+  const n=T.items.length,s=T.rec.s,p=Math.round(s/n*100),wrong=T.items.map((it,i)=>[it,i]).filter(x=>x[0].r.res!=="ok"&&!x[0].over);
+  V.innerHTML=`<div class="big"><div class="e">${p>=90?"🦄":p>=PASS?"🐧":"🐣"}</div><div class="n">${s} von ${n} richtig</div><p class="sub">${VDIR[T.dir]} · ${p} %${T.rec.o?` · davon ${T.rec.o} selbst als richtig gewertet`:""} · +${s*5} Punkte</p></div>
+  ${wrong.length?`<h2 class="h">Deine Fehler (${wrong.length})</h2>${wrong.map(([it,i])=>{const c=byId(it.id),r=it.r;return`<div class="card2"><b>${fmt(c.q)}</b><p style="margin:6px 0">${r.empty?"<i>keine Antwort</i>":"Du: "+esc(it.typed)}${r.res==="near"?' <span class="sub">(fast richtig – Schreibweise)</span>':""}<br>Richtig: <b>${fmt(c.a)}</b>${r.miss.length&&!r.empty?`<br><span class="sub">Es fehlt: ${r.miss.map(esc).join(", ")}</span>`:""}</p>${r.empty?"":`<button class="btn ghost sm" data-act="tover" data-v="${i}">War doch richtig</button>`}</div>`}).join("")}`:`<div class="zbox okb"><b>Fehlerfrei!</b> Alles richtig geschrieben.</div>`}
+  <div class="row mt">${wrong.length?`<button class="btn" data-act="vfix" style="flex:1">Fehler üben</button>`:""}<button class="btn ghost" data-act="vtest" style="flex:1">Nochmal</button></div>
+  <p class="sub mt">„War doch richtig“ ist für richtige Übersetzungen gedacht, die die App nicht kennt. Es wird im Lernstand vermerkt.</p>`;
+}
+
+function buildQueue(){
+  const now=Date.now(),cards=filtered();
+  const due=cards.filter(c=>ck(c.id).n>0&&ck(c.id).due<=now).sort((a,b)=>ck(a.id).due-ck(b.id).due);
+  const neu=roundRobin(cards.filter(c=>!ck(c.id).n));
+  let q=due.concat(neu);
+  if(q.length<12)q=q.concat(cards.filter(c=>!q.includes(c)).sort((a,b)=>ck(a.id).lv-ck(b.id).lv||ck(a.id).due-ck(b.id).due));
+  return roundRobin(q.slice(0,12)).map(c=>c.id);
+}
+function newL(q){return{q,i:0,flip:false,conf:null,hints:0,vin:"",vres:null,typed:"",num:"",showType:false,ok:0,up:0,n:0,pts:0,rq:{},anim:false,rev:0,revOk:0,daily:false}}
+function startLearn(){const q=buildQueue();if(!q.length){toast("Keine Karten in diesen Themen");return}L=newL(q);markDay();go("learn")}
+/* Tagesrunde: zuerst Fehler-Revanchen, dann fällige Karten (gemischt), höchstens 20. */
+function startDaily(){const q=revCards().map(c=>"r:"+c.id).concat(roundRobin(dueCards()).map(c=>c.id)).slice(0,20);if(!q.length){toast("Heute ist nichts fällig. "+nextDueTxt());return}L=newL(q);L.daily=true;markDay();go("learn")}
+const sbarL=()=>`<div class="sbar"><button class="x" data-act="home" aria-label="Runde beenden">✕</button><div class="meter grow"><i style="width:${L.i/L.q.length*100}%;background:var(--orange)"></i></div><span class="sub nowrap">${L.i+1} / ${L.q.length}</span></div>`;
+function revView(c){const tp=topic(c.t);let body=`<div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="badge">Fehler-Revanche</span></div>`;
+  if(!L.flip)body+=`<p class="sub" style="margin:10px 0 0">Diese Frage hattest du im Quiz falsch. Jetzt ohne Auswahl:</p><h2 class="q">${fmt(c.mc.q||c.q)}</h2>
+    <label for="typed" class="sub">Deine Antwort (ein Stichwort reicht)</label><textarea id="typed" placeholder="Aus dem Kopf …">${esc(L.typed)}</textarea>
+    <button class="btn mt" data-act="revflip" style="width:100%">Lösung zeigen</button>`;
+  else body+=`<p class="sub" style="margin:10px 0 4px">${fmt(c.mc.q||c.q)}</p>${L.typed.trim()?`<div class="zbox mine"><b>Deine Antwort:</b> ${esc(L.typed)}</div>`:""}<div class="ans">${quizFb(c,null).html}</div>
+    <button class="btn ghost sm" data-act="say">Vorlesen</button><p class="sub mt">Ehrlich: Hattest du es?</p>
+    <div class="row"><button class="btn r0" data-act="revrate" data-v="0" style="flex:1">Wieder nicht</button><button class="btn r2" data-act="revrate" data-v="2" style="flex:1">Jetzt gewusst</button></div>`;
+  V.innerHTML=sbarL()+`<article class="kcard${L.anim?" turn":""}">${body}</article>`;L.anim=false}
+function rateRev(v){const c=byId(L.q[L.i].slice(2)),k=cs(c.id);L.n++;L.rev++;
+  if(v===2){delete k.rev;k.revWon=(k.revWon||0)+1;S.stats.rev=(S.stats.rev||0)+1;S.points+=10;L.pts+=10;L.revOk++}
+  else{k.rev={due:nextDay(),n:((k.rev&&k.rev.n)||0)+1};S.points+=2;L.pts+=2}
+  L.i++;L.flip=false;L.typed="";hush();save();render();checkTro()}
+function lvDots(c){const k=ck(c.id);return`<span class="lv" title="Lernstufe">${[1,2,3,4].map(i=>`<i class="${k.lv>=i?"f":""}"></i>`).join("")}</span>`}
+function learn(){
+  if(L.i>=L.q.length)return learnEnd();
+  if(String(L.q[L.i]).startsWith("r:"))return revView(byId(L.q[L.i].slice(2)));
+  const c=byId(L.q[L.i]),tp=topic(c.t);
+  const top=`<div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span>${lvDots(c)}</div>`;
+  let body;const badge=c.add?`<p class="sub" style="margin:8px 0 0"><span class="badge">Zusatz</span> nicht vom Lehrer</p>`:"";
+  if(typedCard(c)&&!L.flip){
+    body=`${top}${badge}<h2 class="q">${fmt(c.q)}</h2>${vneedTxt(c)}
+    <label for="vin" class="sub">Deine Antwort</label><input id="vin" class="vin" ${vinAttr(c)} value="${esc(L.vin)}" placeholder="${c.lang==="de"?"auf Deutsch …":"in English …"}">
+    ${L.hints?`<ol class="hints">${(c.h||[]).slice(0,L.hints).map(h=>`<li>${fmt(h)}</li>`).join("")}</ol>`:""}
+    <button class="btn mt" data-act="vcheck" style="width:100%">Prüfen</button>
+    <div class="row mt">${c.h&&L.hints<c.h.length?`<button class="btn ghost sm" data-act="hint">Hinweis ${L.hints+1}/${c.h.length}</button>`:""}<button class="btn ghost sm" data-act="vskip">Weiß ich nicht</button></div>`;
+  }else if(typedCard(c)){const r=L.vres||{res:"no",empty:true,miss:[],fix:[],typed:""};
+    body=`${top}<p class="sub" style="margin:10px 0 4px">${fmt(c.q)}</p>
+    ${vresBox(c,r)}
+    <div class="ans">${fmt(c.a)}</div>${c.x?`<p style="margin:6px 0">${fmt(c.x)}</p>`:""}
+    ${gfx(c)}
+    ${c.z?`<div class="zbox"><b>Zusatzwissen</b> <span class="sub">(nicht aus deiner Mitschrift)</span><br>${fmt(c.z)}</div>`:""}
+    <button class="btn ghost sm" data-act="say">Vorlesen</button>
+    ${r.res==="ok"&&practiceReason(c)?`<p class="sub mt">Übung (${practiceReason(c)}): Das bringt Punkte, aber noch keine neue Stufe.</p>`:""}
+    <button class="btn mt" data-act="vnext" style="width:100%">Weiter</button>
+    ${r.res!=="ok"&&!r.empty?`<button class="btn ghost sm mt" data-act="vover">War doch richtig</button>`:""}`;
+  }else if(!L.flip){
+    body=`${top}${badge}<h2 class="q">${fmt(c.q)}</h2>
+    ${c.num?`<div class="numin"><label for="numin" class="sub">Dein Ergebnis</label><div class="row"><input id="numin" inputmode="decimal" autocomplete="off" value="${esc(L.num)}" placeholder="z. B. 12,5"><span class="unit">${fmt(c.num.u||"")}</span></div></div>`:""}
+    ${L.hints?`<ol class="hints">${(c.h||[]).slice(0,L.hints).map(h=>`<li>${fmt(h)}</li>`).join("")}</ol>`:""}
+    <div class="row">${c.h&&L.hints<c.h.length?`<button class="btn ghost sm" data-act="hint">Hinweis ${L.hints+1}/${c.h.length}</button>`:""}<button class="btn ghost sm" data-act="type">${L.showType?"Notiz ausblenden":"Antwort aufschreiben"}</button></div>
+    ${L.showType?`<textarea id="typed" placeholder="Stichpunkte reichen – aufschreiben stärkt das Erinnern.">${esc(L.typed)}</textarea>`:""}
+    <p class="sub mt">Erst im Kopf antworten. Wie sicher bist du?</p>
+    <div class="three"><button class="btn c0" data-act="flip" data-v="0">Unsicher</button><button class="btn c1" data-act="flip" data-v="1">Geht so</button><button class="btn c2" data-act="flip" data-v="2">Sicher</button></div>`;
+  }else{
+    body=`${top}<p class="sub" style="margin:10px 0 4px">${fmt(c.q)}</p>
+    ${numCheck(c)}
+    ${L.typed.trim()?`<div class="zbox mine"><b>Deine Antwort:</b> ${esc(L.typed)}</div>`:""}
+    <div class="ans">${fmt(c.a)}</div>${c.x?`<p style="margin:6px 0">${fmt(c.x)}</p>`:""}
+    ${Array.isArray(c.s)&&c.s.length?`<div class="zbox"><b>Lösungsweg</b><ol class="sol">${c.s.map(x=>`<li>${fmt(x)}</li>`).join("")}</ol></div>`:""}
+    ${gfx(c)}
+    ${c.z?`<div class="zbox"><b>Zusatzwissen</b> <span class="sub">(nicht aus deiner Mitschrift)</span><br>${fmt(c.z)}</div>`:""}
+    ${c.w?`<div class="zbox why"><b>Denk weiter:</b> ${fmt(c.w)}</div>`:""}
+    <button class="btn ghost sm" data-act="say">Vorlesen</button>
+    ${practiceReason(c)?`<p class="sub mt">Übung (${practiceReason(c)}): „Gewusst“ bringt Punkte, aber noch keine neue Stufe. Die Stufe steigt beim nächsten fälligen Abruf ohne Hilfe.</p>`:""}
+    <p class="sub mt">Ehrlich: Wie lief's?</p>
+    <div class="three"><button class="btn r0" data-act="rate" data-v="0">Nicht gewusst</button><button class="btn r1" data-act="rate" data-v="1">Teilweise</button><button class="btn r2" data-act="rate" data-v="2">Gewusst</button></div>`;
+  }
+  V.innerHTML=sbarL()+`<article class="kcard${L.anim?" turn":""}">${body}</article>`;
+  L.anim=false;const vi=$("#vin");if(vi)try{vi.focus()}catch(e){}
+}
+const sayText=c=>plain(c.a)+". "+plain(c.x||"");
+function numCheck(c){if(!c.num||!String(L.num).trim())return"";const x=parseFloat(String(L.num).replace(/\s/g,"").replace(",","."));const v=+c.num.v,tol=c.num.tol!=null?+c.num.tol:0.02;const ok=isFinite(x)&&(v===0?Math.abs(x)<=1e-9+tol:Math.abs(x-v)<=Math.abs(v)*tol);return`<div class="zbox ${ok?"okb":"nob"}"><b>Dein Ergebnis: ${esc(L.num)} ${fmt(c.num.u||"")}</b> – ${ok?"richtig!":"leider nicht ganz. Richtig: "+esc(String(v).replace(".",","))+" "+fmt(c.num.u||"")}</div>`}
+/* Zählt diese Antwort für den Stufenaufstieg? Nur selbstständig (ohne Hinweis), nicht als Wiederholung in derselben Runde
+   und bei bekannten Karten erst ab dem fälligen Termin. Alles andere ist Übung. */
+function practiceReason(c){const k=ck(c.id);if(L.hints>0)return"mit Hinweis";if((L.rq[c.id]||0)>0)return"Wiederholung in dieser Runde";if(k.n>0&&k.due>Date.now())return"vor dem fälligen Termin";return""}
+function rateCard(v){
+  const c=byId(L.q[L.i]),why=practiceReason(c),k=cs(c.id),now=Date.now();k.n++;k.last=now;
+  let pts=v===2?10:v===1?5:2;pts=Math.max(1,pts-2*L.hints);
+  if(v===2){k.ok++;S.stats.ok++;L.ok++;k.over=0;
+    if(!why){k.lv=Math.min(k.lv+1,6);L.up++;k.due=now+ivl(k.lv)*60000}
+    else if(why!=="vor dem fälligen Termin"){k.due=now+ivl(why==="mit Hinweis"?0:Math.max(1,k.lv))*60000}
+  }
+  else if(v===1){k.due=Math.min(k.due||Infinity,now+ivl(Math.max(0,k.lv-1))*60000)}
+  else{k.lv=0;k.bad++;if(L.conf===2)k.over=1;k.due=now+60000}
+  if((L.conf===2&&v===2)||(L.conf===0&&v===0))S.stats.calib++;
+  S.points+=pts;L.pts+=pts;L.n++;
+  if(v<2&&(L.rq[c.id]||0)<2){L.rq[c.id]=(L.rq[c.id]||0)+1;L.q.splice(Math.min(L.i+1+(v===0?3:5),L.q.length),0,c.id)}
+  L.i++;L.flip=false;L.conf=null;L.hints=0;L.vin="";L.vres=null;L.typed="";L.num="";L.showType=false;hush();save();render();checkTro();
+}
+function learnEnd(){
+  const st=stats(D.cards);
+  const cn=L.n-L.rev;
+  V.innerHTML=`<div class="big"><div class="e">${mascot(st.pct)}</div><div class="n">${L.daily?"Tagesrunde geschafft!":"Runde geschafft!"}</div><p class="sub">${cn?`${L.ok} von ${cn} Karten gewusst · ${L.up} ${L.up===1?"Karte":"Karten"} eine Stufe höher · `:""}${L.rev?`Fehler-Revanche: ${L.revOk} von ${L.rev} gewonnen · `:""}+${L.pts} Punkte</p></div>
+  <div class="zbox"><b>${nextDueTxt()}</b></div>
+  <div class="kpis"><div class="kpi"><b>${st.pct} %</b><span>gelernt</span></div><div class="kpi"><b>${st.mast}</b><span>Karten sicher</span></div><div class="kpi"><b>${st.due}</b><span>fällig</span></div></div>
+  <div class="row">${L.daily?`<button class="btn" data-act="home" style="flex:1">Zur Startseite</button>`:`<button class="btn" data-act="learn" style="flex:1">Noch eine Runde</button>`}<button class="btn ghost" data-act="quiz" style="flex:1">Quiz</button></div>
+  <p class="sub mt">Tipp: Lieber zwei kurze Runden mit Pause als eine lange.</p>`;
+}
+
+function startQuiz(test){
+  const pool=(test?D.cards:filtered()).filter(c=>c.mc&&c.mc.o&&c.mc.o.length>1);
+  const n=Math.min(test?12:10,pool.length);if(!n){toast("Hier gibt es keine Quizfragen");return}
+  const pick=roundRobin(shuffle(pool)).slice(0,n);
+  Q={test,hide:!test&&S.set.hide!==false,shown:false,free:"",items:pick.map(c=>({id:c.id,opts:shuffle(c.mc.o.map((t,i)=>({t,ok:i===0})))})),i:0,ans:null,score:0,by:{}};markDay();go("quiz");
+}
+function quiz(){
+  if(Q.i>=Q.items.length)return quizEnd();
+  const it=Q.items[Q.i],c=byId(it.id),tp=topic(c.t),a=Q.ans;
+  const opts=it.opts.map((o,i)=>`<button class="opt${a!=null&&o.ok?" ok":""}${a===i&&!o.ok?" no":""}" data-act="pick" data-v="${i}" ${a!=null?"aria-disabled=\"true\"":""}>${fmt(o.t)}</button>`).join("");
+  const right=a!=null&&it.opts[a].ok,fb=quizFb(c,it),veil=Q.hide&&!Q.shown&&a==null;
+  V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Beenden">✕</button><div class="meter grow"><i style="width:${Q.i/Q.items.length*100}%;background:var(--blue)"></i></div><span class="sub nowrap">${Q.i+1} / ${Q.items.length}</span></div>
+  <div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="sub">${Q.test?"Lernstand-Test":"Quiz"}</span></div>
+  <h2 class="q">${fmt(c.mc.q||c.q)}</h2>${veil?`<label for="qfree" class="sub">Erst frei antworten – dann die Auswahl aufdecken</label><textarea id="qfree" placeholder="Deine Antwort aus dem Kopf …">${esc(Q.free)}</textarea>
+  <button class="btn mt" data-act="qreveal" style="width:100%">Auswahl zeigen</button><p class="sub mt">Verdecken kannst du unter „Mehr“ ausschalten.</p>`:opts}
+  ${a!=null&&Q.free.trim()?`<div class="zbox mine"><b>Deine freie Antwort:</b> ${esc(Q.free)}</div>`:""}
+  ${a!=null?`<div class="fb" role="status"><b class="${right?"g":"n"}">${right?"Richtig! +10":"Nicht ganz."}</b><br>${fb.html}${right?"":"<br><span class=\"sub\">Diese Frage kommt morgen als Fehler-Revanche wieder – ohne Auswahl.</span>"}</div><div class="row"><button class="btn ghost sm" data-act="say">Vorlesen</button><button class="btn" data-act="qnext" style="flex:1">Weiter</button></div>`:""}`;
+}
+/* Rückmeldung passend zur tatsächlich gestellten Quizfrage (eigene Quizfrage mc.q ≠ Kartenfrage). */
+function quizFb(c,it){const right=it?it.opts.find(o=>o.ok).t:c.mc.o[0],own=!!c.mc.q;let extra="";
+  if(c.mc.x)extra=c.mc.x;else if(!own){if(plain(c.a)!==plain(right))extra=c.a;if(c.x)extra+=(extra?" ":"")+c.x}else if(c.x)extra=c.x;
+  return{html:`Richtige Antwort: <b>${fmt(right)}</b>${extra?"<br>"+fmt(extra):""}`,text:"Richtige Antwort: "+plain(right)+". "+plain(extra)}}
+/* Wird genau einmal beim Abschluss aufgerufen – nicht beim Anzeigen. */
+function finishQuiz(){if(Q.saved)return;Q.saved=true;const n=Q.items.length,p=Math.round(Q.score/n*100);
+  if(Q.test){P().tests.push({d:Date.now(),s:Q.score,n,by:Q.by});if(p>=80)S.stats.t80=1}else if(Q.score===n&&n>=5)S.stats.qp=1;
+  save();checkTro()}
+function quizEnd(){
+  const n=Q.items.length,p=Math.round(Q.score/n*100);
+  V.innerHTML=`<div class="big"><div class="e">${p>=80?"🦉":p>=50?"🦊":"🐣"}</div><div class="n">${Q.score} von ${n} richtig</div><p class="sub">${p} % · ${p>=80?"Stark!":p>=50?"Gut – die Fehler kommen in den Karteikarten wieder.":"Übe die Karteikarten – dann klappt's."}</p></div>
+  ${Q.test?`<div class="card2"><b>Nach Themen</b>${Object.keys(Q.by).map(t=>{const r=Q.by[t];return`<div class="mrow"><div class="lbl">${esc(topic(t).n)}</div><div class="meter"><i style="width:${r[0]/r[1]*100}%;background:${esc(topic(t).c)}"></i></div><span class="pc">${r[0]}/${r[1]}</span></div>`}).join("")}</div>`:""}
+  <div class="row"><button class="btn" data-act="learn" style="flex:1">Karteikarten</button><button class="btn ghost" data-act="${Q.test?"test":"quiz"}" style="flex:1">Nochmal</button></div>`;
+}
+
+function startMatch(si){const sets=D.match||[];if(!sets.length){toast("Für diesen Stapel gibt es kein Zuordnen");return}si=si||0;const s=sets[si];M={si,L:shuffle(s.p.map((_,i)=>i)),R:shuffle(s.p.map((_,i)=>i)),sel:null,done:[],err:0,bad:null,fin:false};markDay();go("match")}
+function match(){
+  const s=D.match[M.si],all=M.done.length===s.p.length;
+  if(all&&!M.fin){M.fin=true;const pts=s.p.length*5+(M.err?0:20);S.points+=pts;M.pts=pts;if(!M.err)S.stats.mp=1;save();checkTro()}
+  V.innerHTML=`<h2 class="h">Zuordnen</h2>
+  <div class="tags">${D.match.map((m,i)=>`<button class="tag${i===M.si?" on":""}" data-act="mset" data-v="${i}">${esc(m.n)}</button>`).join("")}</div>
+  <p class="sub mt">Tippe links einen Begriff, dann rechts das passende Gegenstück. Fehler: ${M.err}</p>
+  ${all?`<div class="big"><div class="e">${M.err?"🐥":"🐝"}</div><div class="n">${M.err?"Geschafft!":"Fehlerfrei!"}</div><p class="sub">+${M.pts} Punkte</p><button class="btn" data-act="mset" data-v="${(M.si+1)%D.match.length}">Nächste Runde</button></div>`:
+  `<div class="mgrid"><div class="mcol">${M.L.map(i=>`<button class="mi${M.done.includes(i)?" done":""}${M.sel===i?" sel":""}" data-act="ml" data-v="${i}" ${M.done.includes(i)?"disabled":""}>${fmt(s.p[i][0])}</button>`).join("")}</div>
+  <div class="mcol">${M.R.map(i=>`<button class="mi${M.done.includes(i)?" done":""}${M.bad===i?" shake":""}" data-act="mr" data-v="${i}" ${M.done.includes(i)?"disabled":""}>${fmt(s.p[i][1])}</button>`).join("")}</div></div>`}`;
+  M.bad=null;
+}
+
+const PASS=50;
+/* Entwurf der Probeklausur lokal sichern, damit nach dem Neuladen „Fortsetzen“ möglich ist. */
+let draftT=null;
+function saveDraft(now){clearTimeout(draftT);const w=()=>{if(E&&E.i<D.exam.length){P().examDraft={i:E.i,show:E.show,ticks:E.ticks,got:E.got,max:E.max,txt:E.txt,locked:E.locked,ts:Date.now()}}else delete P().examDraft;save()};if(now)w();else draftT=setTimeout(w,400)}
+function startExam(fresh){const ex=D.exam||[];if(!ex.length){toast("Für diesen Stapel gibt es keine Probeklausur");return}
+  const dr=P().examDraft;if(!fresh&&dr&&dr.i<ex.length){E=null;markDay();go("exam");return}
+  delete P().examDraft;E={i:0,show:false,ticks:[],got:0,max:0,txt:"",locked:""};markDay();go("exam")}
+function exam(){
+  const ex=D.exam;
+  if(!E){const dr=P().examDraft;V.innerHTML=`<h2 class="h">Probeklausur</h2><div class="card2"><b>Angefangene Probeklausur</b><p class="sub">Aufgabe ${dr.i+1} von ${ex.length} · gespeichert am ${new Date(dr.ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</p><div class="row"><button class="btn" data-act="exresume" style="flex:1">Fortsetzen</button><button class="btn ghost" data-act="exnew" style="flex:1">Neu beginnen</button></div></div>`;return}
+  if(E.i>=ex.length){const p=E.max?Math.round(E.got/E.max*100):0,ok=p>=PASS;
+    V.innerHTML=`<div class="big"><div class="e">${ok?"🐧":"🐣"}</div><div class="n">${E.got} von ${E.max} Punkten</div><p class="sub">Abgeschlossen · ${p} % des Erwartungshorizonts · bestanden ab ${PASS} %</p><p><b>${ok?"Bestanden!":"Noch nicht bestanden – übe die Themen mit den Karteikarten und versuche es nochmal."}</b></p></div><div class="row"><button class="btn" data-act="learn" style="flex:1">Karteikarten</button><button class="btn ghost" data-act="exnew" style="flex:1">Nochmal</button></div>`;return}
+  const it=ex[E.i],tp=topic(it.t);
+  V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Beenden">✕</button><div class="meter grow"><i style="width:${E.i/ex.length*100}%;background:#0e9aa7"></i></div><span class="sub nowrap">Aufgabe ${E.i+1} / ${ex.length}</span></div>
+  <span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><h2 class="q">${fmt(it.q)}</h2>
+  ${E.show?`<p class="sub mt"><b>Deine Antwort</b> (festgehalten, bevor du den Erwartungshorizont gesehen hast):</p><div class="zbox mine">${E.locked.trim()?esc(E.locked).replace(/\n/g,"<br>"):"<i>keine Antwort aufgeschrieben</i>"}</div>`:`<label for="etxt" class="sub">Deine Antwort</label><textarea id="etxt" placeholder="Schreib deine Antwort wie in der Arbeit – Stichpunkte sind okay.">${esc(E.txt)}</textarea><p class="sub">Wird automatisch gespeichert.</p>`}
+  ${E.show?`<p class="sub mt"><b>Erwartungshorizont</b> – hake ab, was in deiner Antwort vorkommt:</p>${it.p.map((p,i)=>`<button class="ck${E.ticks.includes(i)?" on":""}" role="checkbox" aria-checked="${E.ticks.includes(i)}" data-act="tick" data-v="${i}"><span class="b" aria-hidden="true">${E.ticks.includes(i)?"✓":""}</span><span>${fmt(p)}</span></button>`).join("")}<button class="btn mt" data-act="enext" style="width:100%">Weiter (${E.ticks.length}/${it.p.length})</button>`:`<button class="btn mt" data-act="eshow" style="width:100%">Erwartungshorizont zeigen</button>`}`;
+}
+
+function prog(){
+  const st=stats(D.cards),now=Date.now();
+  const over=D.cards.filter(c=>ck(c.id).over),weak=D.cards.filter(c=>{const k=ck(c.id);return k.n>0&&k.lv<2}),tests=P().tests.slice(-6).reverse(),vts=(P().vtests||[]).slice(-6).reverse();
+  report=[`Lernstand ${D.title} – ${new Date().toLocaleDateString("de-DE")}`,st.seen?`Gelernt: ${st.pct} % · sicher: ${st.mast}/${st.n} Karten`:"Noch keine Einschätzung (keine Karteikarte geübt)",`Lerntage in Folge: ${streak()} · Punkte: ${S.points}`,...D.topics.map(t=>{const s=stats(D.cards.filter(c=>c.t===t.id));return`- ${t.n}: ${s.seen?s.pct+" %":"noch keine Einschätzung"}`}),weak.length?`Noch unsicher: ${weak.map(c=>c.q).join(" | ")}`:"Keine unsicheren Karten",tests.length?`Letzter Test: ${tests[0].s}/${tests[0].n}`:"Noch kein Lernstand-Test",...(isVocab()?[vts.length?`Letzter Vokabeltest (${VDIR[vts[0].dir]}): ${vts[0].s}/${vts[0].n}${vts[0].o?` – davon ${vts[0].o} selbst als richtig gewertet`:""}`:"Noch kein Vokabeltest"]:[])].join("\n");
+  V.innerHTML=`<h2 class="h">Dein Fortschritt</h2>
+  <div class="kpis"><div class="kpi"><b>${pctTxt(st)}</b><span>${st.seen?"gelernt":"noch keine Einschätzung"}</span></div><div class="kpi"><b>${streak()}</b><span>Lerntage in Folge</span></div><div class="kpi"><b>${S.points}</b><span>Punkte</span></div></div>
+  <div class="card2"><b>Nach Themen</b>${D.topics.map(t=>{const s=stats(D.cards.filter(c=>c.t===t.id));return`<div class="mrow"><div class="lbl"><span class="chip" style="--c:${esc(t.c)}"><i></i></span>${esc(t.n)}</div>${s.seen?`<div class="meter"><i style="width:${s.pct}%;background:${esc(t.c)}"></i></div><span class="pc">${s.pct} %</span>`:`<span class="sub" style="grid-column:1/-1">Noch keine Einschätzung</span>`}</div>`}).join("")}</div>
+  <div class="card2"><b>Überschätzt</b> <span class="sub">– „sicher“ gesagt, aber nicht gewusst</span>${over.length?`<ul class="ul">${over.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine – deine Selbsteinschätzung passt.</p>`}</div>
+  <div class="card2"><b>Noch unsicher</b>${weak.length?`<ul class="ul">${weak.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine. Stark!</p>`}</div>
+  <div class="card2"><b>Lernstand-Tests</b>${tests.length?tests.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:var(--blue)"></i></div><span class="pc">${t.s}/${t.n}</span></div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="test">Test starten</button></div>
+  ${isVocab()?`<div class="card2"><b>Vokabeltests</b> <span class="sub">– getippt und automatisch geprüft</span>${vts.length?vts.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:#0e9aa7"></i></div><span class="pc">${t.s}/${t.n}</span>${t.o?`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]} · davon ${t.o} selbst als richtig gewertet</span>`:`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]}</span>`}</div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="vtest">Vokabeltest starten</button></div>`:""}
+  <button class="btn" data-act="copy" style="width:100%">Lernstand kopieren und teilen</button>
+  <div id="rep"></div>`;
+}
+function tro(){
+  const n=TRO.filter(t=>S.tro[t.id]).length;
+  V.innerHTML=`<h2 class="h">Trophäen</h2><p class="sub">${n} von ${TRO.length} Maskottchen gesammelt</p>
+  <div class="tros mt">${TRO.map(t=>{const d=S.tro[t.id];return`<div class="tro${d?"":" lock"}"><div class="e">${t.e}</div><b>${d?esc(t.n):"???"}</b><span>${esc(t.d)}</span></div>`}).join("")}</div>`;
+}
+function more(){
+  V.innerHTML=`<h2 class="h">Einstellungen</h2>
+  <div class="card2"><b>Datum der Arbeit</b><p class="sub">Bis dahin werden die Wiederholungen dichter geplant. Ohne Termin gelten normale Abstände.</p>
+    <div class="row" role="group" aria-label="Termin">${[["deck",D.examDate?"Aus dem Stapel ("+deDate(D.examDate)+")":"Aus dem Stapel (keins)"],["own","Eigenes Datum"],["none","Ohne Termin"]].map(o=>`<button class="btn sm ${examMode()===o[0]?"":"ghost"}" aria-pressed="${examMode()===o[0]}" data-act="exmode" data-v="${o[0]}" ${o[0]==="deck"&&!D.examDate?"disabled":""}>${o[1]}</button>`).join("")}</div>
+    ${examMode()==="own"?`<label for="exdate" class="sub" style="display:block;margin-top:10px">Eigenes Datum</label><input type="date" id="exdate" value="${esc(P().exam||"")}">`:""}
+    <p class="sub mt">Aktuell: <b>${examDate()?deDate(examDate())+(examInfo()?" ("+examInfo()+")":" (vorbei)"):"kein Termin"}</b></p></div>
+  <div class="card2"><b>Vorlesen</b><p class="sub">Standard: aus. Wenn an, wird die Lösung beim Umdrehen automatisch vorgelesen. Den Knopf „Vorlesen“ auf der Karte kannst du immer nutzen.</p>
+    <div class="row"><button class="btn ${S.set.tts?"":"ghost"} sm" data-act="tts">${S.set.tts?"An":"Aus"}</button>${[[.85,"Langsam"],[1,"Normal"],[1.15,"Schnell"]].map(r=>`<button class="btn sm ${S.set.rate===r[0]?"":"ghost"}" data-act="rate2" data-v="${r[0]}">${r[1]}</button>`).join("")}<button class="btn ghost sm" data-act="saytest">Test</button></div></div>
+  <div class="card2"><b>Quiz verdeckt</b><p class="sub">Erst frei antworten, dann die Auswahl aufdecken. Das trainiert das Erinnern stärker als nur Wiedererkennen. Der Lernstand-Test bleibt immer offen.</p><button class="btn sm ${S.set.hide===false?"ghost":""}" aria-pressed="${S.set.hide!==false}" data-act="hidetog">${S.set.hide===false?"Aus":"An"}</button></div>
+  <div class="card2"><b>Lernstapel</b><p class="sub">Neue Stapel bekommst du als .json-Datei (z. B. per AirDrop oder WhatsApp in „Dateien“ sichern).</p>
+    ${allDecks().map(d=>`<button class="opt${d.id===D.id?" ok":""}" data-act="deck" data-v="${esc(d.id)}">${esc(d.title)} <span class="sub">· ${d.cards.length} Karten</span></button>`).join("")}
+    <label class="btn ghost sm mt" style="display:inline-flex;align-items:center" for="deckfile">Stapel laden …</label><input type="file" id="deckfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px">
+    ${importErr.length?`<div class="zbox nob" role="alert"><b>Stapel nicht übernommen.</b> Dein bisheriger Stapel bleibt aktiv.<ul class="ul">${importErr.slice(0,5).map(e=>`<li>${esc(e)}</li>`).join("")}${importErr.length>5?`<li>… und ${importErr.length-5} weitere</li>`:""}</ul></div>`:""}</div>
+  <div class="card2"><b>Sicherung</b><p class="sub">Sichert Lernfortschritt, Punkte, Trophäen und eigene Stapel – z. B. vor einem Handywechsel.</p>
+    <div class="row"><button class="btn ghost sm" data-act="bkfile">Als Datei sichern</button><button class="btn ghost sm" data-act="bkcopy">Sicherung kopieren</button><label class="btn ghost sm" style="display:inline-flex;align-items:center" for="backupfile">Wiederherstellen …</label><input type="file" id="backupfile" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></div>
+    ${pendingRestore?`<div class="zbox why" role="alert"><b>Sicherung vom ${new Date(pendingRestore.date).toLocaleString("de-DE")} wiederherstellen?</b><br>Dein aktueller Fortschritt auf diesem Gerät wird dabei ersetzt.<div class="row mt"><button class="btn sm" data-act="rsok">Ja, wiederherstellen</button><button class="btn ghost sm" data-act="rsno">Abbrechen</button></div></div>`:""}
+    <div id="bkout"></div></div>
+  <div class="card2"><b>Fortschritt zurücksetzen</b><p class="sub">Löscht Lernstand und Tests für diesen Stapel. Punkte und Trophäen bleiben.</p><button class="btn ghost sm" data-act="reset">${S._rs?"Wirklich löschen? Nochmal tippen":"Zurücksetzen"}</button></div>
+  <p class="sub"><b>Lernkiste Version ${APP_VERSION}</b> (${deDate(APP_DATE)}) · Alles bleibt nur auf diesem Gerät gespeichert.${D.source?" Inhalte: "+esc(D.source)+".":""} Zusatzwissen ist auf den Karten gekennzeichnet.</p>`;
+}
+
+let importErr=[],pendingRestore=null;
+/* Import: erst vollständig prüfen, dann speichern, erst danach aktivieren. Bei Fehlern bleibt der bisherige Stapel aktiv. */
+function importDeck(txt){let o;importErr=[];
+  try{o=JSON.parse(txt)}catch(err){importErr=["Die Datei ist keine gültige Lernkiste-Datei (kein JSON)."];toast("Stapel nicht übernommen");render();return}
+  const err=deckErrors(o);if(o&&DECKS.some(b=>b.id===o.id))err.unshift("Diese Stapel-id ist schon fest eingebaut. Bitte eine andere id verwenden.");
+  if(err.length){importErr=err;toast("Stapel nicht übernommen");render();return}
+  normDeck(o);const next=decks.filter(d=>d.id!==o.id).concat(o);
+  if(!store.set(DKEY,next.concat(decksBad))){importErr=["Speichern hat nicht geklappt – Stapel nicht übernommen."];render();return}
+  decks=next;D=o;S.deck=o.id;save();toast("Stapel geladen: "+o.title);render()}
+function backup(){return{app:"lernkiste",v:1,date:new Date().toISOString(),state:S,decks:decks.concat(decksBad)}}
+function showBackupText(){const el=$("#bkout");if(el)el.innerHTML=`<textarea readonly style="min-height:120px">${esc(JSON.stringify(backup()))}</textarea><p class="sub">Text markieren, kopieren und z. B. in Notizen sichern.</p>`}
+function render(){
+  pills();
+  document.querySelectorAll("#nav button").forEach(b=>{const on=b.dataset.v===cur||(b.dataset.v==="home"&&["learn","quiz","match","exam","vtest"].includes(cur));b.classList.toggle("on",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  $("#notice").innerHTML=(storeOK?"":`<div class="notice" role="alert"><b>Speichern klappt gerade nicht.</b> Dein Fortschritt geht beim Schließen der App verloren. Mögliche Ursachen: privates Surfen oder voller Speicher.</div>`)+(S.seenVersion!==APP_VERSION?`<div class="notice news" role="status"><div><b>Neu in Version ${APP_VERSION}</b><ul class="ul">${APP_NEWS.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div><button class="btn ghost sm" data-act="newsok">OK</button></div>`:"")+warns.map((w,i)=>`<div class="notice" role="status">${esc(w)} <button class="btn ghost sm" data-act="dismisswarn" data-v="${i}">OK</button></div>`).join("");
+  ({home,learn,quiz,match,exam,vtest,prog,tro,more})[cur]();
+}
+function go(v){cur=v;hush();render();V.scrollTop=0}
+
+/* ===================== Ereignisse ===================== */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=b.dataset.act,v=b.dataset.v;
+  switch(a){
+    case"nav":S._rs=false;go(v);break;
+    case"home":go("home");break;
+    case"closemodal":closeTro();break;
+    case"dismisswarn":warns.splice(+v,1);render();break;
+    case"exmode":{P().examMode=v;if(v==="own"&&!P().exam)P().exam=null;toast(save()?"Termin gespeichert":"Speichern hat nicht geklappt");render();break}
+    case"bkfile":{try{const blob=new Blob([JSON.stringify(backup(),null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lernkiste-sicherung-"+today()+".json";document.body.appendChild(a);a.click();a.remove();toast("Sicherung erstellt – in „Dateien“ speichern")}catch(err){showBackupText()}break}
+    case"bkcopy":{const t=JSON.stringify(backup());try{navigator.clipboard.writeText(t).then(()=>toast("Sicherung kopiert – z. B. in Notizen einfügen"),showBackupText)}catch(err){showBackupText()}break}
+    case"rsok":{const r=pendingRestore;pendingRestore=null;if(!r)break;const okS=store.set(KEY,r.state),okD=okS&&store.set(DKEY,r.decks);if(!okS||!okD){toast("Speichern hat nicht geklappt – nichts geändert");render();break}
+      Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,S0(),r.state);fixState();loadDecks(r.decks);D=allDecks().find(d=>d.id===S.deck)||pickDefault();toast("Sicherung wiederhergestellt");go("home");break}
+    case"rsno":pendingRestore=null;render();break;
+    case"tag":{if(!v)S.filter=[];else{const f=activeFilter();S.filter=f.includes(v)?f.filter(x=>x!==v):f.concat(v)}save();render();break}
+    case"learn":startLearn();break;
+    case"daily":startDaily();break;
+    case"revflip":L.flip=true;L.anim=true;render();if(S.set.tts)speak(quizFb(byId(L.q[L.i].slice(2)),null).text);break;
+    case"revrate":rateRev(+v);break;
+    case"qreveal":Q.shown=true;render();break;
+    case"hidetog":S.set.hide=S.set.hide===false;save();render();break;
+    case"newsok":S.seenVersion=APP_VERSION;save();render();break;
+    case"quiz":startQuiz(false);break;
+    case"test":startQuiz(true);break;
+    case"match":startMatch(0);break;
+    case"mset":startMatch(+v);break;
+    case"exam":startExam(false);break;
+    case"hint":L.hints++;render();break;
+    case"type":L.showType=!L.showType;render();if(L.showType){const t=$("#typed");if(t)t.focus()}break;
+    case"flip":{L.conf=+v;L.flip=true;L.anim=true;render();if(S.set.tts)speak(sayText(byId(L.q[L.i])));break}
+    case"rate":rateCard(+v);break;
+    case"vcheck":{const c=byId(L.q[L.i]);if(!String(L.vin).trim()){toast("Tippe zuerst deine Antwort – oder „Weiß ich nicht“");break}L.vres=vcheck(c,L.vin);L.flip=true;L.anim=true;render();if(S.set.tts)speak(sayText(c));break}
+    case"vskip":{L.vres=vcheck(byId(L.q[L.i]),"");L.flip=true;L.anim=true;render();break}
+    case"vnext":{const r=L.vres;rateCard(r&&r.res==="ok"?2:r&&r.res==="near"?1:0);break}
+    case"vover":{const k=cs(L.q[L.i]);k.vo=(k.vo||0)+1;rateCard(2);break}
+    case"vtest":startVtest();break;
+    case"vdir":P().vset=Object.assign(vset(),{dir:v});save();render();break;
+    case"vnum":P().vset=Object.assign(vset(),{n:+v});save();render();break;
+    case"vrun":runVtest();break;
+    case"tnext":{T.i++;if(T.i>=T.items.length){finishVtest();render();V.scrollTop=0;checkTro()}else render();break}
+    case"tback":if(T.i>0){T.i--;render()}break;
+    case"tover":{const it=T.items[+v];if(it&&!it.over&&it.r.res!=="ok"){it.over=true;T.rec.s++;T.rec.o++;S.points+=5;save();render()}break}
+    case"vfix":{const ids=T.items.filter(it=>it.r.res!=="ok"&&!it.over).map(it=>it.id);if(ids.length){L=newL(ids);markDay();go("learn")}break}
+    case"say":{if(cur==="learn"){const r=String(L.q[L.i]);speak(r.startsWith("r:")?quizFb(byId(r.slice(2)),null).text:sayText(byId(r)))}else if(cur==="quiz"&&Q.items[Q.i]){const it=Q.items[Q.i];speak(quizFb(byId(it.id),it).text)}break}
+    case"pick":{if(Q.ans!=null)break;const it=Q.items[Q.i],c=byId(it.id),ok=it.opts[+v].ok,k=cs(c.id);Q.ans=+v;const r=Q.by[c.t]||(Q.by[c.t]=[0,0]);r[1]++;
+      /* Quiz wird getrennt erfasst. Ein Fehler plant eine Wiederholung ein, ohne die Karteistufe zu senken. */
+      k.qn=(k.qn||0)+1;if(ok){Q.score++;r[0]++;S.points+=10;k.qok=(k.qok||0)+1}else{k.qbad=(k.qbad||0)+1;if(k.n>0)k.due=Math.min(k.due||Infinity,Date.now());k.rev={due:Math.min((k.rev&&k.rev.due)||Infinity,nextDay()),n:(k.rev&&k.rev.n)||0}}
+      save();render();break}
+    case"qnext":Q.i++;Q.ans=null;Q.shown=false;Q.free="";hush();if(Q.i>=Q.items.length)finishQuiz();render();break;
+    case"ml":M.sel=+v;render();break;
+    case"mr":{if(M.sel==null){toast("Tippe zuerst links einen Begriff");break}if(+v===M.sel){M.done.push(+v)}else{M.err++;M.bad=+v}M.sel=null;render();break}
+    case"exresume":{const dr=P().examDraft;E={i:dr.i,show:!!dr.show,ticks:dr.ticks||[],got:dr.got||0,max:dr.max||0,txt:dr.txt||"",locked:dr.locked||""};render();break}
+    case"exnew":startExam(true);break;
+    case"eshow":E.show=true;E.locked=E.txt;saveDraft(true);render();break;
+    case"tick":{const i=+v;E.ticks=E.ticks.includes(i)?E.ticks.filter(x=>x!==i):E.ticks.concat(i);saveDraft(true);render();break}
+    case"enext":{const it=D.exam[E.i];E.got+=E.ticks.length;E.max+=it.p.length;S.points+=E.ticks.length*5;E.i++;E.show=false;E.ticks=[];E.txt="";E.locked="";
+      if(E.i>=D.exam.length){S.stats.ex=1;if(E.max&&E.got/E.max*100>=PASS)S.stats.exPass=1}saveDraft(true);render();V.scrollTop=0;checkTro();break}
+    case"copy":{const done=()=>toast("Kopiert – jetzt z. B. in WhatsApp einfügen");const fall=()=>{$("#rep").innerHTML=`<textarea readonly style="min-height:160px">${esc(report)}</textarea><p class="sub">Text markieren und kopieren.</p>`};try{navigator.clipboard.writeText(report).then(done,fall)}catch(err){fall()}break}
+    case"tts":S.set.tts=!S.set.tts;save();render();break;
+    case"rate2":S.set.rate=+v;save();render();break;
+    case"saytest":speak("Hallo! So klingt die Vorlesestimme.");break;
+    case"deck":{const d=allDecks().find(x=>x.id===v);if(d){D=d;S.deck=d.id;save();toast("Stapel gewechselt");render()}break}
+    case"reset":if(!S._rs){S._rs=true;render()}else{S._rs=false;delete S.p[D.id];save();toast("Fortschritt zurückgesetzt");render()}break;
+  }
+});
+document.addEventListener("input",e=>{if(e.target.id==="typed"&&L)L.typed=e.target.value;if(e.target.id==="etxt"&&E){E.txt=e.target.value;saveDraft(false)}if(e.target.id==="numin"&&L)L.num=e.target.value;if(e.target.id==="vin"&&L)L.vin=e.target.value;if(e.target.id==="tin"&&T&&T.items)T.items[T.i].typed=e.target.value;if(e.target.id==="qfree"&&Q)Q.free=e.target.value});
+document.addEventListener("keydown",e=>{if(e.key!=="Enter"||e.isComposing)return;const id=e.target&&e.target.id,b=id==="vin"?$("[data-act=vcheck]"):id==="tin"?$("[data-act=tnext]"):null;if(b){e.preventDefault();b.click()}});
+document.addEventListener("change",e=>{
+  if(e.target.id==="exdate"){P().exam=e.target.value||null;if(!P().exam)P().examMode="none";toast(save()?(P().exam?"Datum gespeichert":"Termin gelöscht – du lernst ohne Termin"):"Speichern hat nicht geklappt");render()}
+  if(e.target.id==="backupfile"&&e.target.files&&e.target.files[0]){const r=new FileReader();r.onload=()=>{let o=null;try{o=JSON.parse(r.result)}catch(err){}
+    if(!o||o.app!=="lernkiste"||!o.state||typeof o.state!=="object"||typeof o.state.p!=="object"){toast("Das ist keine Lernkiste-Sicherung");return}
+    pendingRestore={date:o.date||Date.now(),state:o.state,decks:Array.isArray(o.decks)?o.decks:[]};render()};r.readAsText(e.target.files[0]);e.target.value=""}
+  if(e.target.id==="deckfile"&&e.target.files&&e.target.files[0]){
+    const r=new FileReader();
+    r.onload=()=>importDeck(r.result);r.onerror=()=>{importErr=["Die Datei konnte nicht gelesen werden."];render()};
+    r.readAsText(e.target.files[0]);e.target.value="";
+  }
+});
+try{window.speechSynthesis&&window.speechSynthesis.getVoices()}catch(e){}
+/* Offline-Start: Service Worker nur bei echtem Webhosting (z. B. GitHub Pages). */
+try{if("serviceWorker" in navigator&&location.protocol==="https:"&&/github\.io$/.test(location.hostname))navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}
+render();checkTro();
+}
+</script>
+</body>
+</html>

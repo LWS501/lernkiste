@@ -259,6 +259,85 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     a.click('[data-act=nav][data-v=more]');
     check('Version unter „Mehr“ sichtbar', a.q('#view').textContent.includes('Lernkiste Version ' + VER));
   }
+  // 16) Vokabeltest-Stapel: Tippen mit automatischer Prüfung
+  {
+    const ENG = 'englisch-9-2026-11';
+    const edeck = JSON.parse([...new JSDOM(HTML).window.document.querySelectorAll('script.lk-deck')].find(e => e.id === 'deck-' + ENG).textContent.replace(/<\\\//g, '</'));
+    const card = a => { const h = a.q('h2.q') || a.q('.kcard .sub'); const t = h.textContent.trim(); return edeck.cards.find(c => c.q === t); };
+    const typeIn = (a, sel, val) => a.input(sel, val);
+    const a = boot({ 'lernkiste-v1': JSON.stringify({ deck: ENG, seenVersion: VER }) });
+    check('Vokabel-Stapel: Startseite zeigt „Vokabeltest“ statt „Probeklausur“', !!a.q('[data-act=vtest]') && !a.q('[data-act=exam]'));
+    a.click('[data-act=learn]');
+    check('Karteikarte hat Eingabefeld statt Selbsteinschätzung', !!a.q('#vin') && !a.q('[data-act=flip]') && a.q('#vin').getAttribute('autocorrect') === 'off' && a.q('#vin').getAttribute('spellcheck') === 'false');
+    a.click('[data-act=vcheck]');
+    check('Leere Eingabe wird nicht gewertet', !!a.q('#vin') && !a.q('.ans'));
+    // richtig
+    let c = card(a), id1 = c.id;
+    typeIn(a, '#vin', c.a); a.click('[data-act=vcheck]');
+    check('Richtige Antwort → „Richtig!“', /Richtig!/.test(a.q('.zbox.okb').textContent) && !a.q('[data-act=vover]'));
+    a.click('[data-act=vnext]'); a.closeModals();
+    check('Richtig → Stufe 1, automatisch bewertet', a.state().p[ENG].c[id1].lv === 1 && a.state().p[ENG].c[id1].ok === 1);
+    // falsch
+    c = card(a); const id2 = c.id;
+    typeIn(a, '#vin', 'xyzxyz'); a.click('[data-act=vcheck]');
+    check('Falsche Antwort → rot mit Lösung', /nicht richtig/.test(a.q('.zbox.nob').textContent) && !!a.q('.ans') && !!a.q('[data-act=vover]'));
+    a.click('[data-act=vnext]'); a.closeModals();
+    check('Falsch → Stufe 0, Fehler gezählt', a.state().p[ENG].c[id2].lv === 0 && a.state().p[ENG].c[id2].bad === 1);
+    // weiß ich nicht
+    c = card(a); const id3 = c.id;
+    a.click('[data-act=vskip]');
+    check('„Weiß ich nicht“ zeigt Lösung ohne „War doch richtig“', /Keine Antwort/.test(a.q('.zbox.nob').textContent) && !a.q('[data-act=vover]'));
+    a.click('[data-act=vnext]'); a.closeModals();
+    // Enter-Taste prüft
+    c = card(a);
+    typeIn(a, '#vin', c.a);
+    a.q('#vin').dispatchEvent(new a.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    check('Enter-Taste löst „Prüfen“ aus', !!a.q('.zbox.okb'));
+    a.click('[data-act=vnext]'); a.closeModals();
+    // „War doch richtig“
+    c = card(a); const id5 = c.id;
+    typeIn(a, '#vin', 'andere übersetzung'); a.click('[data-act=vcheck]'); a.click('[data-act=vover]'); a.closeModals();
+    check('„War doch richtig“ wertet als gewusst und wird vermerkt', a.state().p[ENG].c[id5].ok === 1 && a.state().p[ENG].c[id5].vo === 1);
+    check('Keine Skriptfehler im Tipp-Modus', !a.errs.length, a.errs.join(';'));
+
+    // Vokabeltest
+    const b = boot({ 'lernkiste-v1': JSON.stringify({ deck: ENG, seenVersion: VER }) });
+    b.click('[data-act=vtest]');
+    check('Vokabeltest: Einstellungen mit Richtung und Anzahl', b.d.querySelectorAll('[data-act=vdir]').length === 3 && b.d.querySelectorAll('[data-act=vnum]').length === 3);
+    b.click('[data-act=vnum][data-v="10"]'); b.click('[data-act=vdir][data-v=en]'); b.click('[data-act=vrun]');
+    let seenAdd = false, langs = new Set();
+    for (let i = 0; i < 10; i++) {
+      const cc = card(b); if (cc.add) seenAdd = true; langs.add(cc.lang);
+      b.input('#tin', i < 7 ? cc.a : i === 7 ? 'falsch' : i === 8 ? cc.a.slice(0, -1) + 'x' : '');
+      if (i === 3) check('Keine Rückmeldung während des Tests', !b.q('.zbox') && !b.q('.ans'));
+      b.click('[data-act=tnext]');
+    }
+    b.closeModals();
+    const rec = () => b.state().p[ENG].vtests;
+    check('Ergebnis „7 von 10 richtig“', /7 von 10 richtig/.test(b.q('.big .n').textContent), b.q('.big .n') && b.q('.big .n').textContent);
+    check('Test nur Richtung Englisch, ohne Zusatzkarten', !seenAdd && langs.size === 1 && langs.has('en'));
+    check('Ergebnis genau einmal gespeichert', rec().length === 1 && rec()[0].s === 7 && rec()[0].n === 10 && rec()[0].dir === 'en');
+    check('Fehlerliste: 3 Einträge, leere Antwort ohne „War doch richtig“', b.d.querySelectorAll('.card2').length === 3 && b.d.querySelectorAll('[data-act=tover]').length === 2);
+    b.click('[data-act=tover]'); b.click('[data-act=tover]');
+    check('„War doch richtig“ korrigiert Ergebnis und wird vermerkt', /9 von 10/.test(b.q('.big .n').textContent) && rec()[0].s === 9 && rec()[0].o === 2 && /selbst als richtig gewertet/.test(b.q('.big').textContent));
+    b.click('[data-act=vfix]');
+    check('„Fehler üben“ startet Runde mit den Fehlern', !!b.q('#vin') && /1 \/ 1/.test(b.q('.sbar').textContent));
+    b.click('[data-act=home]'); b.click('[data-act=nav][data-v=prog]');
+    check('Lernstand zeigt Vokabeltest für Eltern', /Vokabeltests/.test(b.q('#view').textContent) && /9\/10/.test(b.q('#view').textContent) && /selbst als richtig gewertet/.test(b.q('#view').textContent));
+    const r = boot(b.dump()); r.click('[data-act=nav][data-v=prog]');
+    check('Vokabeltest-Ergebnis bleibt nach Neustart', /9\/10/.test(r.q('#view').textContent));
+    check('Keine Skriptfehler im Vokabeltest', !b.errs.length && !r.errs.length, b.errs.concat(r.errs).join(';'));
+
+    // Geschichte unverändert
+    const g = boot({ 'lernkiste-v1': JSON.stringify({ deck: DECK, seenVersion: VER }) });
+    check('Geschichte: weiter Probeklausur, kein Vokabeltest', !!g.q('[data-act=exam]') && !g.q('[data-act=vtest]'));
+    g.click('[data-act=learn]');
+    check('Geschichte: Karteikarten weiter mit Selbsteinschätzung', !!g.q('[data-act=flip]') && !g.q('#vin'));
+    // Fortschritt aus 3.1 bleibt lesbar
+    const old = { deck: ENG, seenVersion: '3.1', points: 40, p: { [ENG]: { c: { ep02: { lv: 2, n: 3, due: Date.now() + 9e6, ok: 3, bad: 0, over: 0 } }, tests: [], exam: null } } };
+    const m = boot({ 'lernkiste-v1': JSON.stringify(old) });
+    check('Fortschritt aus Version 3.1 bleibt erhalten', m.state().p[ENG].c.ep02.lv === 2 && /1 von 104/.test(m.q('.hs').textContent) === false && /Neu in Version 4/.test(m.q('#notice').textContent) && !m.errs.length, m.q('.hs').textContent);
+  }
   // Ausgabe
   const w = Math.max(...results.map(r => r.name.length));
   results.forEach(r => console.log((r.ok ? '✅ ' : '❌ ') + r.name.padEnd(w) + (r.ok || !r.detail ? '' : '  → ' + r.detail)));

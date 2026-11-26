@@ -19,6 +19,13 @@ try {
     // Karteikarten: alle Bewertungen, Zahlfeld füllen
     click('[data-act=learn]');
     let n = 0;
+    for (let i = 0; i < 80 && q('#vin'); i++) { // Vokabel-Stapel: tippen, automatisch geprüft
+      const inp = q('#vin'); inp.value = ['famine', 'xx', ''][i % 3]; inp.dispatchEvent(new w.Event('input', { bubbles: true }));
+      click(i % 3 === 2 ? '[data-act=vskip]' : '[data-act=vcheck]');
+      if (!q('.ans')) throw new Error('Ergebnis ohne Lösung');
+      click('[data-act=vnext]'); closeModal(); n++;
+      if (q('[data-act=flip]')) { click('[data-act=flip][data-v="1"]'); click('[data-act=rate][data-v="2"]'); closeModal(); n++; }
+    }
     for (let i = 0; i < 80 && q('[data-act=flip]'); i++) {
       const inp = q('#numin'); if (inp) { inp.value = '1'; inp.dispatchEvent(new w.Event('input', { bubbles: true })); }
       if (i === 0 && q('[data-act=hint]')) click('[data-act=hint]');
@@ -36,6 +43,8 @@ try {
       for (let j = 0; j < k; j++) { const l = q('[data-act=ml]:not([disabled])'); click(l); click(`[data-act=mr][data-v="${l.dataset.v}"]`); closeModal(); }
       report.push(`${name}: Zuordnen → ${q('.big .n') ? q('.big .n').textContent : '?'}`);
     }
+    home();
+    if (q('[data-act=vtest]')) { click('[data-act=vtest]'); click('[data-act=vnum][data-v="10"]'); click('[data-act=vrun]'); for (let j = 0; j < 12 && q('#tin'); j++) { const t = q('#tin'); t.value = j % 2 ? 'x' : ''; t.dispatchEvent(new w.Event('input', { bubbles: true })); click('[data-act=tnext]'); closeModal(); } report.push(`${name}: Vokabeltest → ${q('.big .n') ? q('.big .n').textContent : '?'}`); if (q('[data-act=vfix]')) { click('[data-act=vfix]'); click('[data-act=home]'); } }
     home();
     if (q('[data-act=exam]')) { click('[data-act=exam]'); for (let j = 0; j < 12 && q('[data-act=eshow]'); j++) { click('[data-act=eshow]'); click('[data-act=tick][data-v="0"]'); click('[data-act=enext]'); closeModal(); } report.push(`${name}: Probeklausur → ${q('.big .n') ? q('.big .n').textContent : '?'}`); }
     // Tagesrunde (enthält Fehler-Revanchen, sobald fällig)
