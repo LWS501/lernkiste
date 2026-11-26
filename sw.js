@@ -1,7 +1,7 @@
 /* Lernkiste – Offline-Zwischenspeicher.
    Eigene Dateien: erst Netz (neue Versionen kommen sofort an), offline aus dem Speicher.
    Schriften von Google: erst Speicher, sonst Netz. */
-const CACHE = "lernkiste-v4";
+const CACHE = "lernkiste-v4-1";
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html"])).then(() => self.skipWaiting()));
 });

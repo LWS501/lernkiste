@@ -44,7 +44,7 @@ try {
       report.push(`${name}: Zuordnen → ${q('.big .n') ? q('.big .n').textContent : '?'}`);
     }
     home();
-    if (q('[data-act=vtest]')) { click('[data-act=vtest]'); click('[data-act=vnum][data-v="10"]'); click('[data-act=vrun]'); for (let j = 0; j < 12 && q('#tin'); j++) { const t = q('#tin'); t.value = j % 2 ? 'x' : ''; t.dispatchEvent(new w.Event('input', { bubbles: true })); click('[data-act=tnext]'); closeModal(); } report.push(`${name}: Vokabeltest → ${q('.big .n') ? q('.big .n').textContent : '?'}`); if (q('[data-act=vfix]')) { click('[data-act=vfix]'); click('[data-act=home]'); } }
+    if (q('[data-act=vtest]')) { click('[data-act=vtest]'); click('[data-act=vnum][data-v="10"]'); click('[data-act=vrun]'); for (let j = 0; j < 30 && q('[data-act=tnext]'); j++) { const t = q('#tin'); if (t) { t.value = j % 2 ? 'x' : ''; t.dispatchEvent(new w.Event('input', { bubbles: true })); } click('[data-act=tnext]'); closeModal(); } report.push(`${name}: Vokabeltest → ${q('.big .n') ? q('.big .n').textContent : '?'}`); if (q('[data-act=vfix]')) { click('[data-act=vfix]'); click('[data-act=home]'); } }
     home();
     if (q('[data-act=exam]')) { click('[data-act=exam]'); for (let j = 0; j < 12 && q('[data-act=eshow]'); j++) { click('[data-act=eshow]'); click('[data-act=tick][data-v="0"]'); click('[data-act=enext]'); closeModal(); } report.push(`${name}: Probeklausur → ${q('.big .n') ? q('.big .n').textContent : '?'}`); }
     // Tagesrunde (enthält Fehler-Revanchen, sobald fällig)

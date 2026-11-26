@@ -196,8 +196,8 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
 
 /* ===================== Speicher ===================== */
 /* ===================== Version ===================== */
-const APP_VERSION="4.0", APP_DATE="2026-11-26";
-const APP_NEWS=["Englisch ist jetzt ein Vokabeltest-Stapel: Du tippst die Antwort ein und die App prüft selbst.","Neuer Modus „Vokabeltest“: Wörter am Stück tippen, am Ende Punkte und Fehlerliste.","Neu: Lückensätze zum Üben (Zusatz, nicht vom Lehrer)."];
+const APP_VERSION="4.1", APP_DATE="2026-11-26";
+const APP_NEWS=["Vokabeltest: Jetzt siehst du nach jedem Wort sofort, ob es richtig war – mit Lösung.","Wer wie im echten Test üben will, stellt bei „Rückmeldung“ auf „Erst am Ende“."];
 const KEY="lernkiste-v1", DKEY="lernkiste-decks";
 let storeOK=true;const warns=[];
 try{localStorage.setItem("lk-probe","1");localStorage.removeItem("lk-probe")}catch(e){storeOK=false}
@@ -429,42 +429,48 @@ function vcheck(c,input){
 }
 const vinAttr=c=>`autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" lang="${c.lang==="de"?"de":"en"}" enterkeyhint="done"`;
 const vneedTxt=c=>(c.need||1)>1?`<p class="sub" style="margin:6px 0 0">Nenne ${c.need} Begriffe, mit Komma getrennt.</p>`:"";
-function vresBox(c,r){
+function vresBox(c,r,inTest){
   if(r.res==="ok")return`<div class="zbox okb"><b>Richtig!</b>${r.typed?` Deine Antwort: ${esc(r.typed)}`:""}</div>`;
-  if(r.empty)return`<div class="zbox nob"><b>Keine Antwort.</b> Schau dir die Lösung an – die Karte kommt gleich nochmal.</div>`;
+  if(r.empty)return`<div class="zbox nob"><b>Keine Antwort.</b> ${inTest?"Das ist die Lösung:":"Schau dir die Lösung an – die Karte kommt gleich nochmal."}</div>`;
   const mine=`<br>Deine Antwort: ${esc(r.typed)}`;
   if(r.res==="near")return`<div class="zbox nob"><b>Fast richtig – achte auf die Schreibweise.</b> Im Test zählt das als Fehler.${mine}${r.fix.map(f=>`<br>„${esc(f[0])}“ → richtig: <b>${esc(f[1])}</b>`).join("")}</div>`;
   return`<div class="zbox nob"><b>Leider nicht richtig.</b>${mine}${r.found&&r.found.length?`<br>Gefunden: ${r.found.map(esc).join(", ")}`:""}${r.miss.length?`<br>Es fehlt: <b>${r.miss.map(esc).join(", ")}</b>`:""}</div>`;
 }
 /* Vokabeltest: Wörter am Stück tippen, Rückmeldung erst am Ende. Nur Karten vom Blatt (ohne Zusatz). */
 const VDIR={en:"Deutsch → Englisch",de:"Englisch → Deutsch",mix:"Gemischt"};
-const vset=()=>Object.assign({n:20,dir:"en"},P().vset);
+const VFB={now:"Sofort nach jedem Wort",end:"Erst am Ende (wie im Test)"};
+const vset=()=>{const v=Object.assign({n:20,dir:"en",fb:"now"},P().vset);if(!VFB[v.fb])v.fb="now";return v};
 function vpool(dir){const cs2=D.cards.filter(c=>typedCard(c)&&!c.add);if(dir!=="mix")return cs2.filter(c=>(c.lang||"en")===dir);
   const by={};shuffle(cs2).forEach(c=>{const k=c.id.slice(1);if(!by[k])by[k]=c});return Object.values(by)}
 function startVtest(){T={stage:"setup"};go("vtest")}
 function runVtest(){const st=vset(),pool=shuffle(vpool(st.dir)),n=st.n?Math.min(st.n,pool.length):pool.length;if(!n){toast("Für diese Richtung gibt es keine Wörter");return}
-  T={stage:"run",dir:st.dir,i:0,items:pool.slice(0,n).map(c=>({id:c.id,typed:""})),saved:false};markDay();go("vtest")}
+  T={stage:"run",dir:st.dir,fb:st.fb,i:0,items:pool.slice(0,n).map(c=>({id:c.id,typed:""})),saved:false};markDay();go("vtest")}
 function finishVtest(){if(T.saved)return;T.saved=true;const now=Date.now();let s=0;
-  T.items.forEach(it=>{const c=byId(it.id);it.r=vcheck(c,it.typed);if(it.r.res==="ok")s++;else{const k=cs(c.id);if(k.n>0)k.due=Math.min(k.due||Infinity,now)}});
-  T.rec={d:now,s,n:T.items.length,dir:T.dir,o:0};const p=P();(p.vtests||(p.vtests=[])).push(T.rec);if(p.vtests.length>30)p.vtests.shift();
+  T.items.forEach(it=>{const c=byId(it.id);it.r=it.r||vcheck(c,it.typed);if(it.r.res==="ok")s++;else{const k=cs(c.id);if(k.n>0)k.due=Math.min(k.due||Infinity,now)}});
+  T.rec={d:now,s,n:T.items.length,dir:T.dir,fb:T.fb,o:0};const p=P();(p.vtests||(p.vtests=[])).push(T.rec);if(p.vtests.length>30)p.vtests.shift();
   S.points+=s*5;S.stats.ex=1;if(s/T.items.length*100>=PASS)S.stats.exPass=1;T.stage="end";save()}
 function vtest(){
   if(!T||!isVocab()){T={stage:"setup"}}
   if(T.stage==="setup"){const st=vset(),cnt={en:vpool("en").length,de:vpool("de").length,mix:vpool("mix").length},last=(P().vtests||[]).slice(-1)[0];
-    V.innerHTML=`<h2 class="h">Vokabeltest</h2><p class="sub">Wie im echten Test: Du tippst jedes Wort ein und siehst erst am Ende, was richtig war. Die Schreibweise zählt.</p>
+    V.innerHTML=`<h2 class="h">Vokabeltest</h2><p class="sub">Du tippst jedes Wort ein, die App prüft es. Die Schreibweise zählt. Am Ende gibt es Punkte und eine Fehlerliste.</p>
     <div class="card2"><b>Richtung</b><div class="row mt" role="group" aria-label="Richtung">${Object.keys(VDIR).map(k=>`<button class="btn sm ${st.dir===k?"":"ghost"}" aria-pressed="${st.dir===k}" data-act="vdir" data-v="${k}">${VDIR[k]} (${cnt[k]})</button>`).join("")}</div></div>
     <div class="card2"><b>Anzahl</b><div class="row mt" role="group" aria-label="Anzahl">${[[10,"10 Wörter"],[20,"20 Wörter"],[0,"Alle"]].map(o=>`<button class="btn sm ${st.n===o[0]?"":"ghost"}" aria-pressed="${st.n===o[0]}" data-act="vnum" data-v="${o[0]}">${o[1]}</button>`).join("")}</div></div>
+    <div class="card2"><b>Rückmeldung</b><div class="row mt" role="group" aria-label="Rückmeldung">${Object.keys(VFB).map(k=>`<button class="btn sm ${st.fb===k?"":"ghost"}" aria-pressed="${st.fb===k}" data-act="vfb" data-v="${k}">${VFB[k]}</button>`).join("")}</div></div>
     ${last?`<p class="sub">Letzter Vokabeltest: ${last.s} von ${last.n} richtig.</p>`:""}
     <button class="btn mt" data-act="vrun" style="width:100%">Test starten</button>`;return}
-  if(T.stage==="run"){const it=T.items[T.i],c=byId(it.id),tp=topic(c.t),lastQ=T.i===T.items.length-1;
+  if(T.stage==="run"){const it=T.items[T.i],c=byId(it.id),tp=topic(c.t),lastQ=T.i===T.items.length-1,now=T.fb==="now",okN=T.items.filter(x=>x.r&&x.r.res==="ok").length;
+    const sbar=`<div class="sbar"><button class="x" data-act="home" aria-label="Test abbrechen">✕</button><div class="meter grow"><i style="width:${(T.i+(it.r?1:0))/T.items.length*100}%;background:#0e9aa7"></i></div><span class="sub nowrap">${T.i+1} / ${T.items.length}${now?` · ${okN} ✓`:""}</span></div>`,head=`<div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="badge" style="background:#0e9aa7">Vokabeltest</span></div>`;
+    if(now&&it.r){V.innerHTML=`${sbar}<article class="kcard">${head}<p class="sub" style="margin:10px 0 4px">${fmt(c.q)}</p>
+    ${vresBox(c,it.r,true)}<div class="ans">${fmt(c.a)}</div>${c.x?`<p style="margin:6px 0">${fmt(c.x)}</p>`:""}
+    <button class="btn mt" id="tgo" data-act="tnext" style="width:100%">${lastQ?"Zum Ergebnis":"Weiter"}</button></article>`;const b=$("#tgo");if(b)try{b.focus()}catch(e){}return}
     V.innerHTML=`<div class="sbar"><button class="x" data-act="home" aria-label="Test abbrechen">✕</button><div class="meter grow"><i style="width:${T.i/T.items.length*100}%;background:#0e9aa7"></i></div><span class="sub nowrap">${T.i+1} / ${T.items.length}</span></div>
     <article class="kcard"><div class="ctop"><span class="chip" style="--c:${esc(tp.c)}"><i></i>${esc(tp.n)}</span><span class="badge" style="background:#0e9aa7">Vokabeltest</span></div>
     <h2 class="q">${fmt(c.q)}</h2>${vneedTxt(c)}
     <label for="tin" class="sub">Deine Antwort</label><input id="tin" class="vin" ${vinAttr(c)} value="${esc(it.typed)}" placeholder="${c.lang==="de"?"auf Deutsch …":"in English …"}">
-    <div class="row mt">${T.i?`<button class="btn ghost" data-act="tback">Zurück</button>`:""}<button class="btn" data-act="tnext" style="flex:1">${lastQ?"Abgeben":"Weiter"}</button></div>
+    <div class="row mt">${T.i&&!now?`<button class="btn ghost" data-act="tback">Zurück</button>`:""}<button class="btn" data-act="tnext" style="flex:1">${now?"Prüfen":lastQ?"Abgeben":"Weiter"}</button></div>
     <p class="sub mt">Leer lassen ist erlaubt – zählt als nicht gewusst.</p></article>`;const el=$("#tin");if(el)try{el.focus()}catch(e){}return}
   const n=T.items.length,s=T.rec.s,p=Math.round(s/n*100),wrong=T.items.map((it,i)=>[it,i]).filter(x=>x[0].r.res!=="ok"&&!x[0].over);
-  V.innerHTML=`<div class="big"><div class="e">${p>=90?"🦄":p>=PASS?"🐧":"🐣"}</div><div class="n">${s} von ${n} richtig</div><p class="sub">${VDIR[T.dir]} · ${p} %${T.rec.o?` · davon ${T.rec.o} selbst als richtig gewertet`:""} · +${s*5} Punkte</p></div>
+  V.innerHTML=`<div class="big"><div class="e">${p>=90?"🦄":p>=PASS?"🐧":"🐣"}</div><div class="n">${s} von ${n} richtig</div><p class="sub">${VDIR[T.dir]} · ${T.fb==="now"?"sofort geprüft":"wie im Test"} · ${p} %${T.rec.o?` · davon ${T.rec.o} selbst als richtig gewertet`:""} · +${s*5} Punkte</p></div>
   ${wrong.length?`<h2 class="h">Deine Fehler (${wrong.length})</h2>${wrong.map(([it,i])=>{const c=byId(it.id),r=it.r;return`<div class="card2"><b>${fmt(c.q)}</b><p style="margin:6px 0">${r.empty?"<i>keine Antwort</i>":"Du: "+esc(it.typed)}${r.res==="near"?' <span class="sub">(fast richtig – Schreibweise)</span>':""}<br>Richtig: <b>${fmt(c.a)}</b>${r.miss.length&&!r.empty?`<br><span class="sub">Es fehlt: ${r.miss.map(esc).join(", ")}</span>`:""}</p>${r.empty?"":`<button class="btn ghost sm" data-act="tover" data-v="${i}">War doch richtig</button>`}</div>`}).join("")}`:`<div class="zbox okb"><b>Fehlerfrei!</b> Alles richtig geschrieben.</div>`}
   <div class="row mt">${wrong.length?`<button class="btn" data-act="vfix" style="flex:1">Fehler üben</button>`:""}<button class="btn ghost" data-act="vtest" style="flex:1">Nochmal</button></div>
   <p class="sub mt">„War doch richtig“ ist für richtige Übersetzungen gedacht, die die App nicht kennt. Es wird im Lernstand vermerkt.</p>`;
@@ -647,7 +653,7 @@ function prog(){
   <div class="card2"><b>Überschätzt</b> <span class="sub">– „sicher“ gesagt, aber nicht gewusst</span>${over.length?`<ul class="ul">${over.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine – deine Selbsteinschätzung passt.</p>`}</div>
   <div class="card2"><b>Noch unsicher</b>${weak.length?`<ul class="ul">${weak.map(c=>`<li>${fmt(c.q)}</li>`).join("")}</ul>`:`<p class="sub">Keine. Stark!</p>`}</div>
   <div class="card2"><b>Lernstand-Tests</b>${tests.length?tests.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:var(--blue)"></i></div><span class="pc">${t.s}/${t.n}</span></div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="test">Test starten</button></div>
-  ${isVocab()?`<div class="card2"><b>Vokabeltests</b> <span class="sub">– getippt und automatisch geprüft</span>${vts.length?vts.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:#0e9aa7"></i></div><span class="pc">${t.s}/${t.n}</span>${t.o?`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]} · davon ${t.o} selbst als richtig gewertet</span>`:`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]}</span>`}</div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="vtest">Vokabeltest starten</button></div>`:""}
+  ${isVocab()?`<div class="card2"><b>Vokabeltests</b> <span class="sub">– getippt und automatisch geprüft</span>${vts.length?vts.map(t=>`<div class="mrow"><div class="lbl">${new Date(t.d).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div><div class="meter"><i style="width:${t.s/t.n*100}%;background:#0e9aa7"></i></div><span class="pc">${t.s}/${t.n}</span>${t.o?`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]}${t.fb==="now"?" · sofort geprüft":" · wie im Test"} · davon ${t.o} selbst als richtig gewertet</span>`:`<span class="sub" style="grid-column:1/-1">${VDIR[t.dir]}${t.fb==="now"?" · sofort geprüft":" · wie im Test"}</span>`}</div>`).join(""):`<p class="sub">Noch keiner gemacht.</p>`}<button class="btn ghost sm mt" data-act="vtest">Vokabeltest starten</button></div>`:""}
   <button class="btn" data-act="copy" style="width:100%">Lernstand kopieren und teilen</button>
   <div id="rep"></div>`;
 }
@@ -734,10 +740,11 @@ document.addEventListener("click",e=>{
     case"vover":{const k=cs(L.q[L.i]);k.vo=(k.vo||0)+1;rateCard(2);break}
     case"vtest":startVtest();break;
     case"vdir":P().vset=Object.assign(vset(),{dir:v});save();render();break;
+    case"vfb":P().vset=Object.assign(vset(),{fb:v});save();render();break;
     case"vnum":P().vset=Object.assign(vset(),{n:+v});save();render();break;
     case"vrun":runVtest();break;
-    case"tnext":{T.i++;if(T.i>=T.items.length){finishVtest();render();V.scrollTop=0;checkTro()}else render();break}
-    case"tback":if(T.i>0){T.i--;render()}break;
+    case"tnext":{const it0=T.items[T.i];if(T.fb==="now"&&!it0.r){it0.r=vcheck(byId(it0.id),it0.typed);render();if(S.set.tts)speak(sayText(byId(it0.id)));break}T.i++;if(T.i>=T.items.length){finishVtest();render();V.scrollTop=0;checkTro()}else render();break}
+    case"tback":if(T.i>0&&T.fb!=="now"){T.i--;render()}break;
     case"tover":{const it=T.items[+v];if(it&&!it.over&&it.r.res!=="ok"){it.over=true;T.rec.s++;T.rec.o++;S.points+=5;save();render()}break}
     case"vfix":{const ids=T.items.filter(it=>it.r.res!=="ok"&&!it.over).map(it=>it.id);if(ids.length){L=newL(ids);markDay();go("learn")}break}
     case"say":{if(cur==="learn"){const r=String(L.q[L.i]);speak(r.startsWith("r:")?quizFb(byId(r.slice(2)),null).text:sayText(byId(r)))}else if(cur==="quiz"&&Q.items[Q.i]){const it=Q.items[Q.i];speak(quizFb(byId(it.id),it).text)}break}

@@ -2,6 +2,13 @@
 
 Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html`. Live ist immer `index.html`.
 
+## 4.1 – 26.11.2026
+- **Vokabeltest prüft jetzt sofort:** Nach jedem Wort erscheint richtig/falsch mit Lösung, dann geht es weiter. Zähler der richtigen Antworten läuft oben mit
+- Neue Einstellung **„Rückmeldung“**: „Sofort nach jedem Wort“ (Standard) oder „Erst am Ende (wie im Test)“; die Wahl wird gemerkt
+- Im Sofort-Modus gibt es kein „Zurück“, damit eine geprüfte Antwort nicht nachträglich geändert wird
+- Punktzahl, Fehlerliste, „Fehler üben“ und „War doch richtig“ am Ende bleiben; im Lernstand steht je Test „sofort geprüft“ oder „wie im Test“
+- Abnahmetests erweitert (78 Tests)
+
 ## 4.0 – 26.11.2026
 - **Prüfungsart je Stapel:** Stapel mit `kind: "vocab"` verhalten sich als Vokabeltest; alle anderen Stapel (Geschichte) bleiben unverändert
 - **Tippen statt Aufdecken:** In Vokabel-Stapeln wird die Antwort eingetippt und automatisch geprüft (Karteikarten, Tagesrunde). Richtig = Stufe steigt, falsch = Karte kommt in der Runde wieder

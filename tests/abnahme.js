@@ -304,19 +304,47 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     const b = boot({ 'lernkiste-v1': JSON.stringify({ deck: ENG, seenVersion: VER }) });
     b.click('[data-act=vtest]');
     check('Vokabeltest: Einstellungen mit Richtung und Anzahl', b.d.querySelectorAll('[data-act=vdir]').length === 3 && b.d.querySelectorAll('[data-act=vnum]').length === 3);
+    check('Vokabeltest: Standard ist Rückmeldung sofort', b.d.querySelectorAll('[data-act=vfb]').length === 2 && b.q('[data-act=vfb][data-v=now]').getAttribute('aria-pressed') === 'true');
+    // a) Sofort prüfen (Standard)
     b.click('[data-act=vnum][data-v="10"]'); b.click('[data-act=vdir][data-v=en]'); b.click('[data-act=vrun]');
+    {
+      let okShown = 0, nobShown = 0, noBack = true, sol = true;
+      for (let i = 0; i < 10; i++) {
+        const cc = card(b);
+        if (b.q('[data-act=tback]')) noBack = false;
+        b.input('#tin', i < 6 ? cc.a : i === 6 ? 'falsch' : i === 7 ? cc.a.slice(0, -1) + 'x' : '');
+        b.click('[data-act=tnext]');
+        if (b.q('#tin')) sol = false; // nach „Prüfen“ darf kein Eingabefeld mehr da sein
+        if (b.q('.zbox.okb')) okShown++; if (b.q('.zbox.nob')) nobShown++;
+        if (!b.q('.ans')) sol = false;
+        if (i === 9) check('Sofort prüfen: letzter Knopf heißt „Zum Ergebnis“', /Zum Ergebnis/.test(b.q('[data-act=tnext]').textContent));
+        b.click('[data-act=tnext]');
+      }
+      b.closeModals();
+      check('Sofort prüfen: nach jedem Wort Rückmeldung mit Lösung', okShown === 6 && nobShown === 4 && sol, okShown + '/' + nobShown + '/' + sol);
+      check('Sofort prüfen: kein „Zurück“ (Antwort nicht nachträglich änderbar)', noBack);
+      check('Sofort prüfen: Ergebnis „6 von 10 richtig“, als „sofort geprüft“ gespeichert', /6 von 10 richtig/.test(b.q('.big .n').textContent) && b.state().p[ENG].vtests.length === 1 && b.state().p[ENG].vtests[0].fb === 'now' && b.state().p[ENG].vtests[0].s === 6);
+      check('Sofort prüfen: Fehlerliste am Ende bleibt', b.d.querySelectorAll('.card2').length === 4 && !!b.q('[data-act=vfix]'));
+      b.click('[data-act=vtest]');
+      b.click('[data-act=vfb][data-v=end]');
+      check('Einstellung „Erst am Ende“ wird gemerkt', b.state().p[ENG].vset.fb === 'end');
+      const z = boot(b.dump()); z.click('[data-act=vtest]');
+      check('Einstellung bleibt nach Neustart', z.q('[data-act=vfb][data-v=end]').getAttribute('aria-pressed') === 'true');
+    }
+    // b) Erst am Ende (wie im Test)
+    b.click('[data-act=vrun]');
     let seenAdd = false, langs = new Set();
     for (let i = 0; i < 10; i++) {
       const cc = card(b); if (cc.add) seenAdd = true; langs.add(cc.lang);
       b.input('#tin', i < 7 ? cc.a : i === 7 ? 'falsch' : i === 8 ? cc.a.slice(0, -1) + 'x' : '');
-      if (i === 3) check('Keine Rückmeldung während des Tests', !b.q('.zbox') && !b.q('.ans'));
+      if (i === 3) check('Erst am Ende: keine Rückmeldung während des Tests', !b.q('.zbox') && !b.q('.ans'));
       b.click('[data-act=tnext]');
     }
     b.closeModals();
-    const rec = () => b.state().p[ENG].vtests;
+    const rec = () => b.state().p[ENG].vtests.slice(-1);
     check('Ergebnis „7 von 10 richtig“', /7 von 10 richtig/.test(b.q('.big .n').textContent), b.q('.big .n') && b.q('.big .n').textContent);
     check('Test nur Richtung Englisch, ohne Zusatzkarten', !seenAdd && langs.size === 1 && langs.has('en'));
-    check('Ergebnis genau einmal gespeichert', rec().length === 1 && rec()[0].s === 7 && rec()[0].n === 10 && rec()[0].dir === 'en');
+    check('Ergebnis genau einmal gespeichert', b.state().p[ENG].vtests.length === 2 && rec()[0].fb === 'end' && rec()[0].s === 7 && rec()[0].n === 10 && rec()[0].dir === 'en');
     check('Fehlerliste: 3 Einträge, leere Antwort ohne „War doch richtig“', b.d.querySelectorAll('.card2').length === 3 && b.d.querySelectorAll('[data-act=tover]').length === 2);
     b.click('[data-act=tover]'); b.click('[data-act=tover]');
     check('„War doch richtig“ korrigiert Ergebnis und wird vermerkt', /9 von 10/.test(b.q('.big .n').textContent) && rec()[0].s === 9 && rec()[0].o === 2 && /selbst als richtig gewertet/.test(b.q('.big').textContent));
