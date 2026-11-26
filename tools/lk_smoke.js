@@ -51,6 +51,21 @@ try {
     home(); if (q('[data-act=daily]')) { click('[data-act=daily]'); let m = 0;
       for (let i = 0; i < 40 && (q('[data-act=flip]') || q('[data-act=revflip]')); i++) { if (q('[data-act=revflip]')) { click('[data-act=revflip]'); click(`[data-act=revrate][data-v="${i % 2 ? 2 : 0}"]`); } else { click('[data-act=flip][data-v="2"]'); click('[data-act=rate][data-v="2"]'); } closeModal(); m++; }
       report.push(`${name}: Tagesrunde ${m} Karten → ${q('.n') ? q('.n').textContent : 'nichts fällig'}`); }
+    home();
+    if (q('[data-act=calc]')) { // Rechentraining (Mathe): Formel wählen, Zahl + Einheit eintragen, alle Aufgaben durchklicken
+      click('[data-act=calc]'); click('[data-act=rcrun]'); let k = 0;
+      for (; k < 300 && !q('.big'); k++) {
+        if (q('[data-act=rctask]')) { click('[data-act=rctask]'); closeModal(); continue; }
+        if (q('[data-act=rcnext]')) { click('[data-act=rcnext]'); closeModal(); continue; }
+        if (q('[data-act=rcpick]')) { click('[data-act=rcpick][data-v="0"]'); continue; }
+        const inp = q('#rcin'); if (!inp) throw new Error('Rechentraining: unbekannter Zustand');
+        if (k % 5 === 0) { click('[data-act=rcskip]'); continue; }
+        inp.value = '12,5'; inp.dispatchEvent(new w.Event('input', { bubbles: true }));
+        if (q('[data-act=rcunit]')) click('[data-act=rcunit]');
+        click('[data-act=rccheck]');
+      }
+      report.push(`${name}: Rechentraining → ${q('.big .n') ? q('.big .n').textContent : 'kein Ende?'}`);
+    }
     home(); click('[data-act=test]'); for (let i = 0; i < 14 && q('[data-act=pick]'); i++) { click('[data-act=pick][data-v="1"]'); click('[data-act=qnext]'); closeModal(); }
   }
   click('[data-act=nav][data-v=prog]'); click('[data-act=nav][data-v=tro]'); click('[data-act=nav][data-v=more]');

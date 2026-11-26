@@ -364,7 +364,107 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     // Fortschritt aus 3.1 bleibt lesbar
     const old = { deck: ENG, seenVersion: '3.1', points: 40, p: { [ENG]: { c: { ep02: { lv: 2, n: 3, due: Date.now() + 9e6, ok: 3, bad: 0, over: 0 } }, tests: [], exam: null } } };
     const m = boot({ 'lernkiste-v1': JSON.stringify(old) });
-    check('Fortschritt aus Version 3.1 bleibt erhalten', m.state().p[ENG].c.ep02.lv === 2 && /1 von 104/.test(m.q('.hs').textContent) === false && /Neu in Version 4/.test(m.q('#notice').textContent) && !m.errs.length, m.q('.hs').textContent);
+    check('Fortschritt aus Version 3.1 bleibt erhalten', m.state().p[ENG].c.ep02.lv === 2 && /1 von 104/.test(m.q('.hs').textContent) === false && new RegExp('Neu in Version '+VER.replace('.','\\.')).test(m.q('#notice').textContent) && !m.errs.length, m.q('.hs').textContent);
+  }
+  // ===== Mathe: Rechentraining (ab 5.0) =====
+  {
+    const MA = 'mathe-9-2026-11';
+    const strip = s => String(s).replace(/\^\{([^}]*)\}/g, '$1').replace(/_\{([^}]*)\}/g, '$1');
+    const de = v => String(Math.abs(v) >= 1000 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100).replace('.', ',');
+    // unabhängige Nachrechnung (nicht der Rechner der App)
+    const ev = (f, vars) => { const n = Object.keys(vars); return new Function(...n, 'pi', 'sqrt', 'cbrt', 'return ' + f.replace(/\^/g, '**'))(...n.map(k => vars[k]), Math.PI, Math.sqrt, Math.cbrt); };
+    const mboot = (state = {}) => { const b = boot({ 'lernkiste-v1': JSON.stringify(Object.assign({ deck: MA, seenVersion: VER }, state)) });
+      b.md = JSON.parse([...b.d.querySelectorAll('script.lk-deck')].find(e => e.id === 'deck-' + MA).textContent.replace(/<\\\//g, '</'));
+      const fill = (t, set) => strip(t.replace(/\[([A-Za-z_]\w*)\]/g, (m, k) => k in set ? de(set[k]) : m));
+      b.cur = () => { const tq = b.q('.tq').textContent.trim(); for (const t of b.md.tasks) for (const s of t.sets) if (fill(t.q, s) === tq) { const vars = { ...s }, val = []; t.steps.forEach((st, j) => { if (st.k === 'num') { val[j] = ev(st.f, vars); if (st.as) vars[st.as] = val[j]; } }); return { t, s, val, vars }; } throw new Error('Aufgabe nicht erkannt: ' + tq); };
+      b.step = () => { const c = b.cur(), mq = b.q('.mq').textContent.trim(), j = c.t.steps.findIndex(st => strip(st.q) === mq); if (j < 0) throw new Error('Schritt nicht erkannt: ' + mq); return Object.assign(c, { j, st: c.t.steps[j] }); };
+      // how: 'ok' | 'unit' (Zahl richtig, Einheit falsch) | Zahl (eigener Wert) | 'skip' | 'pickbad'
+      b.answer = (how = 'ok') => { const c = b.step(), st = c.st; let fb;
+        if (st.k === 'pick') { const btns = [...b.d.querySelectorAll('[data-act=rcpick]')], right = btns.find(x => x.textContent.trim() === strip(st.o[0])); b.click(how === 'pickbad' ? btns.find(x => x !== right) : right); }
+        else if (how === 'skip') b.click('[data-act=rcskip]');
+        else { b.input('#rcin', typeof how === 'number' ? de(how) : de(c.val[c.j])); const us = [...b.d.querySelectorAll('[data-act=rcunit]')];
+          if (us.length) b.click(how === 'unit' ? us.find(x => x.dataset.v !== st.u) : us.find(x => x.dataset.v === st.u)); b.click('[data-act=rccheck]'); }
+        fb = b.q('.zbox[role=status]') ? b.q('.zbox[role=status]').textContent : ''; b.click('[data-act=rcnext]'); b.closeModals(); return fb; };
+      b.solveTask = () => { let n = 0; while (!b.q('[data-act=rctask]') && n++ < 12) b.answer('ok'); };
+      b.badge = () => b.q('.ctop .badge').textContent;
+      return b; };
+
+    // Startseite
+    const a = mboot();
+    check('Mathe: Rechentraining statt Probeklausur/Vokabeltest', !!a.q('[data-act=calc]') && !a.q('[data-act=exam]') && !a.q('[data-act=vtest]') && !!a.q('[data-act=learn]') && !!a.q('[data-act=test]'));
+    // Jede Aufgabe, jeder Zahlensatz: App-Lösungsweg stimmt mit unabhängiger Nachrechnung überein
+    {
+      let n = 0, bad = [];
+      for (const t of a.md.tasks) for (const s of t.sets) { const vars = { ...s }; t.steps.forEach((st, j) => { if (st.k !== 'num') return; const v = ev(st.f, vars); if (st.as) vars[st.as] = v; n++; if (!isFinite(v) || v <= 0) bad.push(t.id + '#' + j); (st.err || []).forEach(e => { let y; try { y = ev(e.f, vars); } catch (x) { y = NaN; } if (isFinite(y) && Math.abs(y - v) <= Math.abs(v) * 0.006) bad.push(t.id + ' Fehlerformel=Lösung ' + e.f + ' ' + JSON.stringify(s)); }); }); }
+      check('Mathe: alle Rechenschritte ergeben gültige Werte, keine Fehlerformel trifft die Lösung', n > 200 && !bad.length, n + ' Schritte; ' + bad.slice(0, 4).join(' | '));
+    }
+    // Geführte Runde, alles richtig
+    a.click('[data-act=calc]');
+    check('Rechentraining: Einstellungen (Hilfe, Anzahl)', /Automatisch/.test(a.q('#view').textContent) && !!a.q('[data-act=rcmode][data-v=g]') && !!a.q('[data-act=rcnum][data-v="4"]'));
+    a.click('[data-act=rcmode][data-v=g]'); a.click('[data-act=rcnum][data-v="4"]'); a.click('[data-act=rcrun]');
+    check('Geführt: Aufgabe mit Skizze und Kennzeichnung', /Schritt für Schritt/.test(a.badge()) && !!a.q('.tq') && !!a.q('.gx svg'));
+    const topicsSeen = new Set(); let stepsAsked = 0;
+    for (let i = 0; i < 4; i++) { const c = a.cur(); topicsSeen.add(c.t.t); let n = 0; while (!a.q('[data-act=rctask]') && n++ < 12) { a.answer('ok'); stepsAsked++; }
+      if (i === 0) check('Geführt: Lösungsweg und Merksatz nach der Aufgabe', /Aufgabe richtig/.test(a.q('#view').textContent) && /Lösungsweg/.test(a.q('#view').textContent) && /Merke/.test(a.q('#view').textContent));
+      a.click('[data-act=rctask]'); a.closeModals(); }
+    check('Geführt: 4 von 4 richtig, Ergebnis-Seite', /4 von 4 Aufgaben richtig/.test(a.q('.big .n').textContent), a.q('.big') ? a.q('.big').textContent : '');
+    check('Gemischt: Aufgaben aus verschiedenen Themen', topicsSeen.size === 4, [...topicsSeen].join(','));
+    const pm = a.state().p[MA];
+    check('Könnensstufe 1 je gelöstem Aufgabentyp gespeichert', Object.values(pm.m).filter(k => k.lv === 1 && k.ok === 1).length === 4 && pm.mtests.length === 1 && pm.mtests[0].s === 4);
+    check('Pinguin-Trophäe durch Rechentraining', !!a.state().tro.peng);
+
+    // Automatisch: gekonnte Typen kommen ohne Hilfsschritte, neue geführt
+    const b = mboot({ filter: ['ke'], p: { [MA]: { c: {}, tests: [], exam: null, m: { 'kegel-o': { n: 1, ok: 1, lv: 1 }, 'kegel-v': { n: 1, ok: 1, lv: 1 }, 'kegel-sand': { n: 1, ok: 1, lv: 1 } }, mset: { n: 4, mode: 'auto' } } } });
+    b.click('[data-act=calc]'); check('Themenfilter gilt im Rechentraining', /3 Aufgabentypen in den gewählten Themen/.test(b.q('#view').textContent));
+    b.click('[data-act=rcrun]');
+    check('Automatisch: gekonnter Typ „Wie in der Arbeit“', /Wie in der Arbeit/.test(b.badge()) && /auf Papier/.test(b.q('#view').textContent));
+    let finalsOnly = true, guard = 0;
+    while (!b.q('.big') && guard++ < 40) { if (b.q('[data-act=rctask]')) { b.click('[data-act=rctask]'); b.closeModals(); continue; } const c = b.step(); if (!c.st.final) finalsOnly = false; b.answer('ok'); }
+    check('Wie in der Arbeit: nur Endergebnisse gefragt, 3 von 3', finalsOnly && /3 von 3 Aufgaben richtig/.test(b.q('.big .n').textContent));
+    check('Könnensstufe 2 („kann es allein“)', Object.values(b.state().p[MA].m).every(k => k.lv === 2));
+
+    // Fehlerdiagnose am Kegel-Volumen
+    const kv = () => { const c = mboot({ filter: ['ke'], p: { [MA]: { c: {}, tests: [], exam: null, mset: { n: 4, mode: 'g' } } } }); c.click('[data-act=calc]'); c.click('[data-act=rcrun]'); let g = 0;
+      while (c.cur().t.id !== 'kegel-v' && g++ < 5) { c.solveTask(); c.click('[data-act=rctask]'); c.closeModals(); } c.answer('ok'); return c; };
+    let c = kv(), cu = c.step();
+    let fb = c.answer(cu.val[cu.j] * 3);
+    check('Diagnose: ⅓ vergessen wird erkannt', /Leider nicht richtig/.test(fb) && /⅓ vergessen/.test(fb), fb);
+    check('Fehler → Aufgabe gilt als nicht gelöst und kommt mit neuen Zahlen wieder', /Noch nicht ganz/.test(c.q('#view').textContent) && /neuen Zahlen wieder/.test(c.q('#view').textContent));
+    const before = c.cur().s; let g2 = 0; c.click('[data-act=rctask]');
+    while (!c.q('.big') && g2++ < 60) { if (c.q('[data-act=rctask]')) { c.click('[data-act=rctask]'); c.closeModals(); continue; } if (/Zweiter Versuch/.test(c.badge())) break; c.answer('ok'); }
+    check('Zweiter Versuch: gleicher Typ, andere Zahlen, geführt', /Zweiter Versuch/.test(c.badge()) && c.cur().t.id === 'kegel-v' && JSON.stringify(c.cur().s) !== JSON.stringify(before));
+    c = kv(); fb = c.answer('unit');
+    check('Diagnose: Zahl richtig, Einheit falsch → zählt als Fehler', /Einheit stimmt nicht/.test(fb) && /Volumen steht in cm³/.test(fb) && /Noch nicht ganz/.test(c.q('#view').textContent), fb);
+    c = kv(); cu = c.step(); fb = c.answer(cu.val[cu.j] * 1.012);
+    check('Rundungsfehler: zählt als richtig, mit Hinweis', /ungenau gerundet/.test(fb) && /Rundungsfehler/.test(fb) && /Aufgabe richtig/.test(c.q('#view').textContent), fb);
+    c = kv(); cu = c.step(); fb = c.answer(cu.val[cu.j] * 4);
+    check('Diagnose: Durchmesser statt Radius', /Durchmesser/.test(fb), fb);
+    c = kv(); fb = c.answer('skip');
+    check('„Weiß ich nicht“ zeigt die Rechenzeile', /So wird gerechnet/.test(c.q('#view').textContent) || /Lösungsweg/.test(c.q('#view').textContent));
+    c = kv(); c.input('#rcin', 'abc'); c.click('[data-act=rccheck]');
+    check('Keine Zahl → Hinweis statt Wertung', !c.q('[data-act=rcnext]') && /Zahl/.test(c.d.querySelector('.toast').textContent));
+    c.input('#rcin', '37,7'); c.click('[data-act=rccheck]');
+    check('Ohne Einheit → Hinweis statt Wertung', !c.q('[data-act=rcnext]') && /Einheit/.test(c.d.querySelector('.toast').textContent));
+    // Formelwahl falsch
+    c = mboot({ filter: ['ke'], p: { [MA]: { c: {}, tests: [], exam: null, mset: { n: 4, mode: 'g' } } } }); c.click('[data-act=calc]'); c.click('[data-act=rcrun]'); let g3 = 0;
+    while (c.cur().t.id !== 'kegel-v' && g3++ < 5) { c.solveTask(); c.click('[data-act=rctask]'); c.closeModals(); }
+    fb = c.answer('pickbad'); check('Falsche Formel gewählt → richtige wird gezeigt', /Nicht ganz/.test(fb) && /Richtig ist/.test(fb), fb);
+
+    // Lernstand für Eltern + Neustart
+    a.click('[data-act=nav][data-v=prog]');
+    const pv = a.q('#view').textContent;
+    check('Lernstand: Checkliste und Rechentraining', /Checkliste „Ich kann …“/.test(pv) && /Stand je Aufgabentyp/.test(pv) && /klappt mit Hilfsschritten/.test(pv) && /4\/4/.test(pv));
+    const r = mboot(JSON.parse(a.dump()['lernkiste-v1'])); r.click('[data-act=nav][data-v=prog]');
+    check('Rechentraining-Stand bleibt nach Neustart', /klappt mit Hilfsschritten/.test(r.q('#view').textContent) && /4\/4/.test(r.q('#view').textContent));
+    // Karteikarten mit Skizze auf der Vorderseite, Netz-Karten
+    const k = mboot({ filter: ['g'] }); k.click('[data-act=learn]');
+    let sawSketch = false; for (let i = 0; i < 12 && k.q('[data-act=flip]'); i++) { if (/Netz|Körper\?/.test(k.q('h2.q').textContent) && k.q('.kcard .gx svg')) sawSketch = true; k.click('[data-act=flip][data-v="2"]'); k.click('[data-act=rate][data-v="2"]'); k.closeModals(); }
+    check('Karten „Welches Netz / welcher Körper?“ zeigen die Skizze schon auf der Vorderseite', sawSketch);
+    // andere Stapel unverändert
+    const g = boot({ 'lernkiste-v1': JSON.stringify({ deck: DECK, seenVersion: VER }) });
+    check('Geschichte/Englisch: kein Rechentraining', !g.q('[data-act=calc]') && !!g.q('[data-act=exam]'));
+    const all = [a, b, c, k, r, g].flatMap(x => x.errs);
+    check('Keine Skriptfehler im Rechentraining', !all.length, all.join(';'));
   }
   // Ausgabe
   const w = Math.max(...results.map(r => r.name.length));

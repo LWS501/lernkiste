@@ -30,3 +30,18 @@ Ein Stapel mit `"kind": "vocab"` wird getippt und automatisch geprüft. Felder j
 
 Karten ohne `ok` werden wie bisher aufgedeckt und selbst bewertet.
 
+## Prüfungsart „Mathe“ mit Rechentraining (ab 5.0)
+
+Ein Stapel mit `"kind": "math"` und `tasks` zeigt statt der Probeklausur das **Rechentraining**. Jede Aufgabe ist eine Vorlage:
+
+| Feld | Bedeutung |
+|---|---|
+| `id`, `t`, `n` | eindeutige id, Thema, Name des Aufgabentyps (steht im Lernstand) |
+| `q` | Aufgabentext mit Platzhaltern in eckigen Klammern: `Ein Kegel hat den Radius r = [r] cm …` |
+| `sets` | Zahlensätze, z. B. `[{"r": 3, "h": 4}, {"r": 5, "h": 12}]` – der erste Satz sind die Zahlen vom Blatt |
+| `steps` | Rechenschritte in Reihenfolge (siehe unten) |
+| `g`, `tip` | Skizze (Grafik-id) und Merksatz nach der Aufgabe |
+
+Schritte: `{"k": "pick", "q": …, "o": [richtige Formel, falsche …]}` oder `{"k": "num", "q": …, "f": "pi*r^2*h/3", "u": "cm³"}`. Bei `num` zusätzlich: `as` (Name des Zwischenwerts für spätere Schritte), `w` (Rechenzeile mit Platzhaltern, die App hängt „= Ergebnis“ an), `final: true` (wird auch „wie in der Arbeit“ gefragt), `err` (typische Fehler `[{"f": "pi*r^2*h", "m": "⅓ vergessen …"}]`), `uo` (eigene Einheiten-Auswahl, sonst cm/cm²/cm³), `n` (Kurzname). Rechenausdrücke: Zahlen mit Punkt, Namen, `+ - * / ^`, Klammern, `sqrt()`, `cbrt()`, `pi`.
+
+Weitere Felder: Grafik `{"k": "shape", "s": "kegel"}` (quader, zylinder, kegel, pyramide, kugel, prisma, netz-zylinder, netz-kegel, netz-pyramide, eiswaffel, turm), Kartenfeld `gq: true` (Skizze schon auf der Vorderseite) und `checklist: [{"n": "Ich kann …", "tasks": [ids], "cards": [ids]}]` für die Ampel im Lernstand.

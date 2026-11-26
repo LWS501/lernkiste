@@ -2,6 +2,16 @@
 
 Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html`. Live ist immer `index.html`.
 
+## 5.0 – 26.11.2026
+- **Prüfungsart Mathe (`kind: "math"`) mit neuem Modus „Rechentraining“** (ersetzt dort die Probeklausur): Aufgabenvorlagen mit wechselnden Zahlen, die App prüft Ergebnis **und Einheit**
+- **Schritt für Schritt → Wie in der Arbeit:** Neue Aufgabentypen werden geführt gerechnet (Formel wählen, Zwischenwerte, Ergebnis). Klappt das, kommt derselbe Typ beim nächsten Mal ohne Hilfsschritte (Einstellung „Automatisch“, beides auch fest wählbar)
+- **Fehlerdiagnose:** Hinweise auf typische Fehler (⅓ vergessen, Körperhöhe statt Seitenhöhe/Mantellinie, Durchmesser statt Radius, cm² statt cm³, Rundung, Umrechnung). Rundungsfehler bis 3 % zählen als richtig, mit Hinweis
+- **Gemischte Runden** über alle Körper; eine falsch gelöste Aufgabe kommt am Ende der Runde mit neuen Zahlen wieder
+- **Körperskizzen und Netze** als neue Grafik-Art `shape`; Karten mit `gq: true` zeigen die Skizze schon auf der Vorderseite („Zu welchem Körper gehört dieses Netz?“)
+- **Lernstand:** Stand je Aufgabentyp (übt Schritt für Schritt / klappt mit Hilfsschritten / kann es allein) und die Checkliste „Ich kann …“ der Lehrkraft mit Ampel
+- Neuer Lernstapel **Mathe – Körper: Oberfläche und Volumen** (51 Karten in 7 Themen, 21 Aufgabentypen mit 4–6 Zahlensätzen, 5 Zuordnen-Sets), Arbeit am 30.11.
+- Stapelformat: neue Felder `tasks`, `checklist`, Grafik `shape`, Kartenfeld `gq`; `tools/lk_deck.py`, Rauchtest und Abnahmetests erweitert (106 Tests, mit unabhängiger Nachrechnung aller Aufgaben)
+
 ## 4.1 – 26.11.2026
 - **Vokabeltest prüft jetzt sofort:** Nach jedem Wort erscheint richtig/falsch mit Lösung, dann geht es weiter. Zähler der richtigen Antworten läuft oben mit
 - Neue Einstellung **„Rückmeldung“**: „Sofort nach jedem Wort“ (Standard) oder „Erst am Ende (wie im Test)“; die Wahl wird gemerkt

@@ -11,6 +11,75 @@ import json, re, sys
 START, END = "<!-- @@LK-DECKS-START@@ -->", "<!-- @@LK-DECKS-END@@ -->"
 BLOCK = re.compile(r'<script type="application/json" class="lk-deck" id="deck-([^"]+)">(.*?)</script>', re.S)
 KINDS = {"wheel", "pyramid", "steps", "timeline", "list"}
+SHAPES = {"quader", "zylinder", "kegel", "pyramide", "kugel", "prisma", "netz-zylinder", "netz-kegel", "netz-pyramide", "eiswaffel", "turm"}
+NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def validate_tasks(d, tids, gr, E, warn):
+    """Rechenaufgaben (kind=math): Vorlagen mit Zahlensätzen und Rechenschritten."""
+    tasks = d.get("tasks")
+    if tasks is None:
+        if d.get("kind") == "math":
+            warn.append("kind=math ohne Rechenaufgaben (tasks) – es gibt dann kein Rechentraining")
+        return
+    if not isinstance(tasks, list):
+        E("tasks muss eine Liste sein")
+        return
+    seen = set()
+    for i, t in enumerate(tasks):
+        n = f"Rechenaufgabe {t.get('id', i) if isinstance(t, dict) else i}"
+        if not isinstance(t, dict) or not t.get("id") or t["id"] in seen or not t.get("n") or not t.get("q") or t.get("t") not in tids:
+            E(f"{n}: id (eindeutig), n, q und Thema t nötig")
+            continue
+        seen.add(t["id"])
+        if t.get("g") is not None and t["g"] not in gr:
+            E(f"{n}: Grafik {t['g']} existiert nicht")
+        sets = t.get("sets")
+        if not (isinstance(sets, list) and sets and all(isinstance(s, dict) and s and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in s.values()) for s in sets)):
+            E(f"{n}: sets muss eine Liste von Zahlensätzen sein")
+            continue
+        if len(sets) < 3:
+            warn.append(f"{n}: weniger als 3 Zahlensätze – die Aufgabe wiederholt sich schnell")
+        known = set(sets[0]) | {"pi", "sqrt", "cbrt"}
+        if any(set(s) != set(sets[0]) for s in sets):
+            E(f"{n}: alle Zahlensätze brauchen dieselben Namen")
+        steps = t.get("steps")
+        if not (isinstance(steps, list) and steps):
+            E(f"{n}: steps fehlen")
+            continue
+        for j, s in enumerate(steps):
+            if not isinstance(s, dict) or not s.get("q") or s.get("k") not in ("pick", "num"):
+                E(f"{n}, Schritt {j + 1}: k (pick/num) und q nötig")
+                continue
+            if s["k"] == "pick":
+                o = s.get("o") or []
+                if len(o) < 2 or len(set(o)) != len(o):
+                    E(f"{n}, Schritt {j + 1}: o braucht mind. 2 verschiedene Formeln (richtige zuerst)")
+                continue
+            exprs = [s.get("f")] + [e.get("f") for e in s.get("err") or []]
+            for f in exprs:
+                if not isinstance(f, str) or not f.strip():
+                    E(f"{n}, Schritt {j + 1}: Rechenausdruck f fehlt")
+                    continue
+                unknown = set(NAME.findall(f)) - known
+                if unknown or not re.fullmatch(r"[A-Za-z0-9_ .+\-*/^()]+", f):
+                    E(f"{n}, Schritt {j + 1}: unbekannte Namen oder Zeichen in „{f}“ {sorted(unknown)}")
+            if any(not e.get("m") for e in s.get("err") or []):
+                E(f"{n}, Schritt {j + 1}: Fehlerhinweis ohne Text m")
+            for name in re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)\]", s.get("w") or ""):
+                if name not in known:
+                    E(f"{n}, Schritt {j + 1}: Platzhalter [{name}] unbekannt")
+            if s.get("as"):
+                known.add(s["as"])
+        if not any(isinstance(s, dict) and s.get("k") == "num" and s.get("final") for s in steps):
+            warn.append(f"{n}: kein Schritt mit final – „wie in der Arbeit“ fragt dann nur den letzten Schritt")
+        for name in re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)\]", t["q"]):
+            if name not in sets[0]:
+                E(f"{n}: Platzhalter [{name}] im Text hat keinen Wert")
+    for c in d.get("checklist") or []:
+        for tid in c.get("tasks") or []:
+            if tid not in seen:
+                E(f"Checkliste „{c.get('n')}“: Aufgabe {tid} gibt es nicht")
 
 
 def validate(d):
@@ -25,8 +94,8 @@ def validate(d):
             E(f"{k} fehlt")
     if d.get("examDate") and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d["examDate"]):
         E("examDate muss YYYY-MM-DD sein")
-    if d.get("kind") not in (None, "vocab"):
-        E("kind (Prüfungsart) muss fehlen oder \"vocab\" sein")
+    if d.get("kind") not in (None, "vocab", "math"):
+        E("kind (Prüfungsart) muss fehlen oder \"vocab\" bzw. \"math\" sein")
     if d.get("kind") == "vocab" and not any(isinstance(c, dict) and c.get("ok") for c in (d.get("cards") or [])):
         E("kind=vocab, aber keine Karte hat gültige Antworten (ok)")
     topics = d.get("topics") or []
@@ -42,6 +111,10 @@ def validate(d):
             E(f"Thema {t.get('id')}: Farbe c muss #rrggbb sein")
     gr = d.get("graphics") or {}
     for gid, g in gr.items():
+        if g.get("k") == "shape":
+            if g.get("s") not in SHAPES:
+                E(f"Grafik {gid}: Skizze s muss eines von {sorted(SHAPES)} sein")
+            continue
         if g.get("k") not in KINDS:
             E(f"Grafik {gid}: k muss eines von {sorted(KINDS)} sein")
             continue
@@ -124,8 +197,16 @@ def validate(d):
             E(f"Probeklausur {i}: t, q und p nötig")
     if not d.get("match"):
         warn.append("kein Zuordnen-Set")
-    if not d.get("exam"):
+    if not d.get("exam") and not d.get("tasks"):
         warn.append("keine Probeklausur")
+    validate_tasks(d, tids, gr, E, warn)
+    cids = set(ids)
+    for c in d.get("checklist") or []:
+        if not c.get("n"):
+            E("Checkliste: Eintrag ohne Text n")
+        for cid in c.get("cards") or []:
+            if cid not in cids:
+                E(f"Checkliste „{c.get('n')}“: Karte {cid} gibt es nicht")
     return err, warn
 
 
