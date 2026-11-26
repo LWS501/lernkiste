@@ -2,6 +2,10 @@
 
 Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html`. Live ist immer `index.html`.
 
+## 3.1 – 26.11.2026
+- Neuer Lernstapel **Englisch – Geography vocabulary: Population** (90 Karten: 40 Vokabeln in beide Richtungen, Abkürzungen LEDC/NIC/MEDC, Formel zum Bevölkerungswachstum, 3 Rechenkarten; 5 Zuordnen-Sets, 6 Probeklausur-Aufgaben), Test am 26.11.
+- Abnahmetests wählen den Geschichte-Stapel fest aus (unabhängig von weiteren Stapeln)
+
 ## 3.0 – 24.11.2026
 - **Tagesrunde:** fällige Karten und Fehler-Revanchen als kurze Runde, danach Anzeige der nächsten Übung
 - **Fehler-Revanche:** Quizfehler kommen am Folgetag ohne Auswahl wieder (freier Abruf)

@@ -9,6 +9,9 @@ const results = [];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function boot(storage = {}, { blockStorage = false } = {}) {
+  // Tests beziehen sich auf den Geschichte-Stapel: ihn fest auswählen, falls der Zustand keinen Stapel nennt
+  if (!('lernkiste-v1' in storage)) storage = Object.assign({ 'lernkiste-v1': JSON.stringify({ deck: DECK }) }, storage);
+  else { try { const o = JSON.parse(storage['lernkiste-v1']); if (o && typeof o === 'object' && !('deck' in o)) storage = Object.assign({}, storage, { 'lernkiste-v1': JSON.stringify(Object.assign({ deck: DECK }, o)) }); } catch (e) { /* absichtlich kaputt */ } }
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://lws501.github.io/lernkiste/' });
   const w = dom.window, d = w.document, errs = [];
   w.addEventListener('error', e => errs.push(e.message));
@@ -44,7 +47,7 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     a.click('[data-act=nav][data-v=home]');
     check('Bisheriger Stapel bleibt aktiv', /Geschichte/.test(a.q('.hk').textContent));
     const b = boot({ 'lernkiste-decks': JSON.stringify([{ id: 'kaputt', title: 'x', topics: 5, cards: [1] }]), 'lernkiste-v1': JSON.stringify({ deck: 'kaputt' }) });
-    check('Neustart mit beschädigtem Stapel → gültiger Stapel offen', b.q('.hk') && /Geschichte/.test(b.q('.hk').textContent) && !b.errs.length, b.errs.join(';'));
+    check('Neustart mit beschädigtem Stapel → gültiger Stapel offen', b.q('.hk') && b.q('.hk').textContent.trim().length > 0 && !/kaputt/.test(b.q('.hk').textContent) && !b.errs.length, b.errs.join(';'));
     check('Hinweis auf ausgeblendeten Stapel', /ausgeblendet/.test(b.q('#notice').textContent));
     const c = boot({ 'lernkiste-v1': '{kaputt' });
     const keys = Object.keys(c.dump());
