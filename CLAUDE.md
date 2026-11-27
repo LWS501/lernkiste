@@ -52,7 +52,7 @@ Das Konzept für eine Hauptversion ist ein eigenes Dokument und nennt: Ziel, Nic
 - Beide Systeme: Tippziele ≥ 44 px, `font-size` ≥ 16 px in Eingabefeldern (sonst zoomt Safari), Eingabefelder mit `autocapitalize="off" autocorrect="off" spellcheck="false"` und passendem `inputmode`/`enterkeyhint`, `env(safe-area-inset-*)` beachten, `dvh` statt `vh` für volle Höhe (Bildschirmtastatur).
 - Nur Android: Die Zurück-Taste bzw. -Geste schließt zuerst den offenen Dialog bzw. führt zum vorherigen Bildschirm und beendet die App nicht sofort (`history.pushState` + `popstate`). Die Installation als App läuft über das Web-App-Manifest (`manifest.webmanifest`, Icons 192/512 px, `display: standalone`, `theme-color`). Vorlese-Stimmen sind auf jedem Gerät anders, deshalb muss Vorlesen auch ohne deutsche Stimme sauber abbrechen.
 - **Bekannte Lücken (Stand 5.0):** kein Manifest, keine Behandlung der Zurück-Taste. Wird im Paket „Android“ behoben, siehe Konzept.
-- Barrierefreiheit: Bedienbar mit VoiceOver (Rollen, Beschriftungen, Fokus nach Moduswechsel), ausreichender Kontrast, `prefers-reduced-motion` respektieren.
+- Barrierefreiheit: Bedienbar mit VoiceOver (iPhone) und TalkBack (Android) (Rollen, Beschriftungen, Fokus nach Moduswechsel), ausreichender Kontrast, `prefers-reduced-motion` respektieren.
 - Leistung: Kein Startruckeln. Große Listen nicht bei jeder Eingabe neu aufbauen, keine Bibliotheken für Kleinigkeiten.
 - App-Texte: Deutsch, kurz, Du-Form, ermutigend. Kommentare und Bezeichner wie im Bestand.
 
@@ -61,7 +61,7 @@ Code und Stapel werden getrennt: Stapel kommen als eigene Dateien nach `decks/`,
 
 ## Git und Deploy
 - Commit-Nachricht: `Lernkiste X.Y: <was sich für die Nutzerin ändert>`.
-- GitHub Pages braucht nach dem Push einige Minuten. Danach die App auf dem iPhone ganz schließen und neu öffnen.
+- GitHub Pages braucht nach dem Push einige Minuten. Danach die App auf dem Handy (iPhone oder Android) ganz schließen und neu öffnen.
 - Zurückrollen: die gewünschte Datei aus `versions/` als `index.html` übernehmen, dann neue Unterversion.
 
 ## Abschluss jeder Aufgabe
