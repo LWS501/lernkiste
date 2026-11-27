@@ -10,9 +10,10 @@ Lernkarten-App als **eine** statische `index.html` (immer die aktuelle Version; 
 | `sw.js` | Offline-Zwischenspeicher (nur auf github.io aktiv) |
 | `tools/lk_deck.py` | Stapel prüfen und einbauen: `python3 tools/lk_deck.py validate|list|add|remove …` |
 | `tools/lk_smoke.js` | Rauchtest: klickt alle Modi durch |
+| `tools/lk_test.sh` | alle Prüfungen in einem Lauf |
 | `tests/abnahme.js` | Abnahmetests (Import, Speicher, Stufenlogik, Quiz, Test, Klausurentwurf, Termin, VoiceOver, Sicherung) |
 
-Tests: `npm i jsdom@24`, dann `node tools/lk_smoke.js index.html` und `node tests/abnahme.js index.html`.
+Tests: `npm i --no-save jsdom@24`, dann **`bash tools/lk_test.sh`** (Rauchtest, Abnahmetests, Prüfregeln, Stapelprüfung, Versionen). Läuft auch automatisch als GitHub Action bei jedem Push/PR. Regeln für Claude: `CLAUDE.md`.
 
 Zurückrollen: gewünschte Datei aus `versions/` als `index.html` hochladen.
 

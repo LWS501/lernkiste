@@ -1,0 +1,14 @@
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i --no-save jsdom@24
+      - run: bash tools/lk_test.sh index.html
