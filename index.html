@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Lernkiste">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Lernkiste</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -210,8 +215,8 @@ textarea{min-height:86px;margin-top:10px;resize:vertical}
 
 /* ===================== Speicher ===================== */
 /* ===================== Version ===================== */
-const APP_VERSION="5.0", APP_DATE="2026-11-26";
-const APP_NEWS=["Neu: Rechentraining für Mathe – Aufgaben mit immer neuen Zahlen, Schritt für Schritt oder wie in der Arbeit.","Die App sagt dir, wo der Fehler steckt: Einheit, vergessenes ⅓, Durchmesser statt Radius …","Neuer Lernstapel: Mathe – Körper (Arbeit am 30.11.), mit Skizzen und Netzen."];
+const APP_VERSION="5.1", APP_DATE="2026-11-28";
+const APP_NEWS=["Die Lernkiste läuft jetzt auch auf Android-Handys richtig: als App installierbar, mit eigenem Symbol.","Zurück-Taste: schließt zuerst ein offenes Fenster und führt dann zur Startseite.","Neues App-Symbol – auf dem iPhone erscheint es, wenn du die Lernkiste neu zum Home-Bildschirm hinzufügst."];
 const KEY="lernkiste-v1", DKEY="lernkiste-decks";
 let storeOK=true;const warns=[];
 try{localStorage.setItem("lk-probe","1");localStorage.removeItem("lk-probe")}catch(e){storeOK=false}
@@ -384,7 +389,7 @@ const TRO=[
 let troQ=[];
 function checkTro(){TRO.forEach(t=>{if(!S.tro[t.id]&&t.f()){S.tro[t.id]=today();troQ.push(t)}});save();showTro()}
 let lastFocus=null;
-function showTro(){if($(".modal")||!troQ.length)return;const t=troQ.shift();if(!lastFocus)lastFocus=document.activeElement;const m=document.createElement("div");m.className="modal";m.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="troT" aria-describedby="troD"><div class="e" aria-hidden="true">${t.e}</div><div class="h" id="troT">Neue Trophäe: ${esc(t.n)}</div><p class="sub" id="troD">${esc(t.d)}</p><button class="btn" data-act="closemodal" style="width:100%">Juhu!</button></div>`;document.body.appendChild(m);$("#app").setAttribute("aria-hidden","true");const b=m.querySelector("button");if(b)b.focus()}
+function showTro(){if($(".modal")||!troQ.length)return;backGuard();const t=troQ.shift();if(!lastFocus)lastFocus=document.activeElement;const m=document.createElement("div");m.className="modal";m.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="troT" aria-describedby="troD"><div class="e" aria-hidden="true">${t.e}</div><div class="h" id="troT">Neue Trophäe: ${esc(t.n)}</div><p class="sub" id="troD">${esc(t.d)}</p><button class="btn" data-act="closemodal" style="width:100%">Juhu!</button></div>`;document.body.appendChild(m);$("#app").setAttribute("aria-hidden","true");const b=m.querySelector("button");if(b)b.focus()}
 function closeTro(){const m=$(".modal");if(m)m.remove();$("#app").removeAttribute("aria-hidden");if(troQ.length)return showTro();const f=lastFocus;lastFocus=null;if(f&&document.contains(f)&&f!==document.body)f.focus();else focusView()}
 function focusView(){const h=V.querySelector("h2")||V;if(!h.hasAttribute("tabindex"))h.setAttribute("tabindex","-1");h.focus()}
 
@@ -855,12 +860,22 @@ function importDeck(txt){let o;importErr=[];
 function backup(){return{app:"lernkiste",v:1,date:new Date().toISOString(),state:S,decks:decks.concat(decksBad)}}
 function showBackupText(){const el=$("#bkout");if(el)el.innerHTML=`<textarea readonly style="min-height:120px">${esc(JSON.stringify(backup()))}</textarea><p class="sub">Text markieren, kopieren und z. B. in Notizen sichern.</p>`}
 function render(){
-  pills();
+  V.dataset.view=cur;pills();
   document.querySelectorAll("#nav button").forEach(b=>{const on=b.dataset.v===cur||(b.dataset.v==="home"&&["learn","quiz","match","exam","vtest","calc"].includes(cur));b.classList.toggle("on",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $("#notice").innerHTML=(storeOK?"":`<div class="notice" role="alert"><b>Speichern klappt gerade nicht.</b> Dein Fortschritt geht beim Schließen der App verloren. Mögliche Ursachen: privates Surfen oder voller Speicher.</div>`)+(S.seenVersion!==APP_VERSION?`<div class="notice news" role="status"><div><b>Neu in Version ${APP_VERSION}</b><ul class="ul">${APP_NEWS.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div><button class="btn ghost sm" data-act="newsok">OK</button></div>`:"")+warns.map((w,i)=>`<div class="notice" role="status">${esc(w)} <button class="btn ghost sm" data-act="dismisswarn" data-v="${i}">OK</button></div>`).join("");
   ({home,learn,quiz,match,exam,vtest,calc,prog,tro,more})[cur]();
 }
-function go(v){cur=v;hush();render();V.scrollTop=0}
+function go(v){cur=v;hush();render();V.scrollTop=0;if(v==="home")dropGuard();else backGuard()}
+/* Zurück-Taste/-Geste (v. a. Android): erst Dialog schließen, dann Startseite; auf der Startseite verlässt Zurück die App.
+   Dafür liegt außerhalb der Startseite oder bei offenem Dialog genau ein Zusatzeintrag „lk-back“ im Verlauf. */
+let skipPop=0;
+function backGuard(){try{if(!(history.state&&history.state["lk-back"]))history.pushState({"lk-back":1},"")}catch(e){}}
+function dropGuard(){try{if(history.state&&history.state["lk-back"]){skipPop=Date.now();history.back()}}catch(e){}}
+window.addEventListener("popstate",()=>{
+  if(skipPop&&Date.now()-skipPop<1000){skipPop=0;return}skipPop=0;
+  if($(".modal")){closeTro();if(!$(".modal")&&cur!=="home")backGuard();return}
+  if(cur!=="home"){S._rs=false;go("home")}
+});
 
 /* ===================== Ereignisse ===================== */
 document.addEventListener("click",e=>{
@@ -869,7 +884,7 @@ document.addEventListener("click",e=>{
   switch(a){
     case"nav":S._rs=false;go(v);break;
     case"home":go("home");break;
-    case"closemodal":closeTro();break;
+    case"closemodal":closeTro();if(!$(".modal")&&cur==="home")dropGuard();break;
     case"dismisswarn":warns.splice(+v,1);render();break;
     case"exmode":{P().examMode=v;if(v==="own"&&!P().exam)P().exam=null;toast(save()?"Termin gespeichert":"Speichern hat nicht geklappt");render();break}
     case"bkfile":{try{const blob=new Blob([JSON.stringify(backup(),null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lernkiste-sicherung-"+today()+".json";document.body.appendChild(a);a.click();a.remove();toast("Sicherung erstellt – in „Dateien“ speichern")}catch(err){showBackupText()}break}
