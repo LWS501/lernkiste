@@ -468,6 +468,48 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     const all = [a, b, c, k, r, g].flatMap(x => x.errs);
     check('Keine Skriptfehler im Rechentraining', !all.length, all.join(';'));
   }
+  // 18) Android: installierbar (Manifest, Symbole) und Zurück-Taste
+  {
+    const path = require('path'), dir = path.dirname(path.resolve(process.argv[2] || 'index.html'));
+    const doc = new JSDOM(HTML).window.document, href = s => { const el = doc.querySelector(s); return el && el.getAttribute('href'); };
+    const pngSize = f => { try { const b = fs.readFileSync(path.join(dir, f)); return b.toString('ascii', 1, 4) === 'PNG' ? [b.readUInt32BE(16), b.readUInt32BE(20)] : null; } catch (e) { return null; } };
+    let man = null; try { man = JSON.parse(fs.readFileSync(path.join(dir, href('link[rel=manifest]') || 'x'), 'utf8')); } catch (e) { /* fehlt */ }
+    check('Android: Manifest verlinkt und lesbar', !!man);
+    check('Android: Manifest mit Name, Start, eigenständigem Fenster', !!man && !!man.name && !!man.short_name && man.start_url === './' && man.scope === './' && man.display === 'standalone' && !!man.theme_color && !!man.background_color);
+    const ic = (man && man.icons) || [], has = (s, p) => ic.some(i => i.sizes === s && (i.purpose || 'any').split(' ').includes(p) && String(pngSize(i.src)) === s.replace('x', ','));
+    check('Android: Symbole 192/512 und maskierbar, Dateien mit passender Größe', has('192x192', 'any') && has('512x512', 'any') && has('512x512', 'maskable'), JSON.stringify(ic));
+    check('iPhone: eigenes Home-Bildschirm-Symbol (180 px)', String(pngSize(href('link[rel=apple-touch-icon]') || 'x')) === '180,180');
+    check('Farbe der Statusleiste gesetzt', !!doc.querySelector('meta[name=theme-color]'));
+    const sw = fs.readFileSync(path.join(dir, 'sw.js'), 'utf8');
+    check('Offline: Manifest und Symbole im Zwischenspeicher', /manifest\.webmanifest/.test(sw) && ic.every(i => sw.includes(i.src)));
+
+    try {
+    const tools = x => ({ view: () => x.q('#view').dataset.view, guard: () => !!(x.w.history.state && x.w.history.state['lk-back']), back: async () => { x.w.history.back(); await sleep(30); } });
+    const a = boot({ 'lernkiste-v1': JSON.stringify({ deck: DECK, seenVersion: VER }) }), A = tools(a);
+    a.click('[data-act=quiz]');
+    check('Zurück-Taste: Unterseite legt einen Zurück-Schritt an', A.view() === 'quiz' && A.guard());
+    await A.back();
+    check('Zurück-Taste: aus dem Quiz zur Startseite, danach verlässt Zurück die App', A.view() === 'home' && !A.guard());
+    a.click('[data-act=learn]'); a.click('[data-act=flip][data-v="2"]'); a.click('[data-act=rate][data-v="2"]');
+    check('Zurück-Taste: Trophäen-Dialog in der Lernrunde offen', !!a.q('.modal') && A.view() === 'learn' && A.guard());
+    await A.back();
+    check('Zurück-Taste: schließt zuerst den Dialog, Lernrunde bleibt', !a.q('.modal') && A.view() === 'learn' && A.guard());
+    await A.back();
+    check('Zurück-Taste: dann zur Startseite', A.view() === 'home' && !A.guard());
+    a.click('[data-act=learn]'); a.click('[data-act=nav][data-v=home]'); await sleep(30);
+    check('Startseite über Knopf: kein übrig gebliebener Zurück-Schritt', A.view() === 'home' && !A.guard());
+    // Dialoge direkt auf der Startseite (zwei Trophäen beim Start)
+    const st = JSON.stringify({ deck: DECK, seenVersion: VER, points: 150, stats: { ok: 20 } });
+    const b = boot({ 'lernkiste-v1': st }), B = tools(b); await sleep(30);
+    check('Startseite: Dialog beim Start hat einen Zurück-Schritt', !!b.q('.modal') && B.guard());
+    await B.back();
+    check('Startseite: Zurück schließt Dialog, nächste Trophäe folgt', !!b.q('.modal') && B.view() === 'home' && B.guard());
+    b.click('[data-act=closemodal]'); await sleep(30);
+    check('Startseite: letzter Dialog per Knopf zu → kein übrig gebliebener Zurück-Schritt', !b.q('.modal') && B.view() === 'home' && !B.guard());
+    const all = [a, b].flatMap(x => x.errs);
+    check('Zurück-Taste: keine Skriptfehler', !all.length, all.join(';'));
+    } catch (e) { check('Zurück-Taste: Ablauf ohne Abbruch', false, e.message); }
+  }
   // Ausgabe
   const w = Math.max(...results.map(r => r.name.length));
   results.forEach(r => console.log((r.ok ? '✅ ' : '❌ ') + r.name.padEnd(w) + (r.ok || !r.detail ? '' : '  → ' + r.detail)));

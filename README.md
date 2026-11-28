@@ -8,6 +8,7 @@ Lernkarten-App als **eine** statische `index.html` (immer die aktuelle Version; 
 | `CHANGELOG.md` | Änderungsprotokoll mit Versionsschema |
 | `versions/` | Archiv aller Versionen (`lernkiste-vX.Y.html`) – nur zum Nachsehen und Zurückrollen, nicht zum Lernen öffnen (gleicher Speicher wie die Live-App) |
 | `sw.js` | Offline-Zwischenspeicher (nur auf github.io aktiv) |
+| `manifest.webmanifest`, `icons/` | Installation als App (Android/iPhone), App-Symbol; Quelle `icons/icon.svg` |
 | `tools/lk_deck.py` | Stapel prüfen und einbauen: `python3 tools/lk_deck.py validate|list|add|remove …` |
 | `tools/lk_smoke.js` | Rauchtest: klickt alle Modi durch |
 | `tools/lk_test.sh` | alle Prüfungen in einem Lauf |

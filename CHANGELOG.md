@@ -2,6 +2,12 @@
 
 Versionsschema **Hauptversion.Unterversion**: Die Hauptversion steigt bei neuen Lernfunktionen oder größeren Umbauten, die Unterversion bei neuen Lernstapeln und kleinen Korrekturen. Jede Version liegt als Kopie in `versions/lernkiste-vX.Y.html`. Live ist immer `index.html`.
 
+## 5.1 – 28.11.2026
+- **Android:** Die Lernkiste lässt sich in Chrome als App installieren („Zum Startbildschirm hinzufügen“/„App installieren“) und öffnet ohne Adressleiste (Web-App-Manifest `manifest.webmanifest`)
+- **Neues App-Symbol:** Lernkisten-Maskottchen (`icons/`), auch fürs iPhone; dort erscheint es, wenn die App neu zum Home-Bildschirm hinzugefügt wird
+- **Zurück-Taste/-Geste:** schließt zuerst einen offenen Dialog (z. B. Trophäe), dann geht es zur Startseite; auf der Startseite verlässt Zurück die App
+- Offline-Zwischenspeicher enthält jetzt auch Manifest und Symbole; Abnahmetests erweitert (122 Tests)
+
 ## 5.0 – 26.11.2026
 - **Prüfungsart Mathe (`kind: "math"`) mit neuem Modus „Rechentraining“** (ersetzt dort die Probeklausur): Aufgabenvorlagen mit wechselnden Zahlen, die App prüft Ergebnis **und Einheit**
 - **Schritt für Schritt → Wie in der Arbeit:** Neue Aufgabentypen werden geführt gerechnet (Formel wählen, Zwischenwerte, Ergebnis). Klappt das, kommt derselbe Typ beim nächsten Mal ohne Hilfsschritte (Einstellung „Automatisch“, beides auch fest wählbar)
