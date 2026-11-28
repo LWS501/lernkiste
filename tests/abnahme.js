@@ -264,6 +264,8 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     const ENG = 'englisch-9-2026-11';
     const edeck = JSON.parse([...new JSDOM(HTML).window.document.querySelectorAll('script.lk-deck')].find(e => e.id === 'deck-' + ENG).textContent.replace(/<\\\//g, '</'));
     const card = a => { const h = a.q('h2.q') || a.q('.kcard .sub'); const t = h.textContent.trim(); return edeck.cards.find(c => c.q === t); };
+    // Tippfehler im ersten verlangten Begriff (nicht in der Musterantwort: dort können gleichwertige Varianten stehen, z. B. ep03)
+    const typo = c => { const t = c.ok[0].split('|')[0].replace(/\(.*?\)\s*/g, '').trim(); return t.slice(0, -1) + (t.slice(-1) === 'x' ? 'q' : 'x'); };
     const typeIn = (a, sel, val) => a.input(sel, val);
     const a = boot({ 'lernkiste-v1': JSON.stringify({ deck: ENG, seenVersion: VER }) });
     check('Vokabel-Stapel: Startseite zeigt „Vokabeltest“ statt „Probeklausur“', !!a.q('[data-act=vtest]') && !a.q('[data-act=exam]'));
@@ -312,7 +314,7 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
       for (let i = 0; i < 10; i++) {
         const cc = card(b);
         if (b.q('[data-act=tback]')) noBack = false;
-        b.input('#tin', i < 6 ? cc.a : i === 6 ? 'falsch' : i === 7 ? cc.a.slice(0, -1) + 'x' : '');
+        b.input('#tin', i < 6 ? cc.a : i === 6 ? 'falsch' : i === 7 ? typo(cc) : '');
         b.click('[data-act=tnext]');
         if (b.q('#tin')) sol = false; // nach „Prüfen“ darf kein Eingabefeld mehr da sein
         if (b.q('.zbox.okb')) okShown++; if (b.q('.zbox.nob')) nobShown++;
@@ -336,7 +338,7 @@ function check(name, ok, detail = '') { results.push({ name, ok: !!ok, detail })
     let seenAdd = false, langs = new Set();
     for (let i = 0; i < 10; i++) {
       const cc = card(b); if (cc.add) seenAdd = true; langs.add(cc.lang);
-      b.input('#tin', i < 7 ? cc.a : i === 7 ? 'falsch' : i === 8 ? cc.a.slice(0, -1) + 'x' : '');
+      b.input('#tin', i < 7 ? cc.a : i === 7 ? 'falsch' : i === 8 ? typo(cc) : '');
       if (i === 3) check('Erst am Ende: keine Rückmeldung während des Tests', !b.q('.zbox') && !b.q('.ans'));
       b.click('[data-act=tnext]');
     }
